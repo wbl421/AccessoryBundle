@@ -4,19 +4,26 @@ struct ContentView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var showingAddCategory = false
     @State private var categoryToEdit: Category?
+    
+    // 判断是否是 iPad
+    private var isIPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+    }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    headerView
-                    categoryGrid
-                    Spacer(minLength: 40)
-                    accessoryButton
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: 24) {
+                        headerView
+                        categoryGrid(geometry: geometry)
+                        Spacer(minLength: 40)
+                        accessoryButton
+                    }
+                    .padding(20)
                 }
-                .padding(20)
+                .background(Color(.systemGroupedBackground))
             }
-            .background(Color(.systemGroupedBackground))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -42,11 +49,14 @@ struct ContentView: View {
             .padding(.top, 8)
     }
 
-    private var categoryGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+    private func categoryGrid(geometry: GeometryProxy) -> some View {
+        let columns = isIPad ? 4 : 2  // iPad 显示 4 列，手机 2 列
+        let spacing: CGFloat = 16
+        
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: columns), spacing: 16) {
             ForEach(dataManager.categories.sorted { $0.order < $1.order }) { category in
                 NavigationLink(destination: CategoryView(category: category)) {
-                    CategoryCard(category: category)
+                    CategoryCard(category: category, isIPad: isIPad, cardWidth: (geometry.size.width - 40 - spacing * CGFloat(columns - 1)) / CGFloat(columns))
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
@@ -87,20 +97,22 @@ struct ContentView: View {
 
 struct CategoryCard: View {
     let category: Category
+    var isIPad: Bool = false
+    var cardWidth: CGFloat = 0
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             Image(systemName: category.icon)
-                .font(.system(size: 56))
+                .font(.system(size: isIPad ? 48 : 40))
                 .foregroundStyle(.white)
 
             Text(category.name)
-                .font(.title2)
+                .font(isIPad ? .title3 : .headline)
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 36)
+        .frame(width: cardWidth > 0 ? cardWidth : nil, height: isIPad ? 130 : 110)
+        .frame(maxWidth: cardWidth > 0 ? cardWidth : .infinity)
         .background(
             LinearGradient(colors: [category.color, category.color.opacity(0.7)],
                           startPoint: .topLeading, endPoint: .bottomTrailing)
