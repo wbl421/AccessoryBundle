@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Xcode 用户数据（不需要共享）
+*.xcuserstate
+xcuserdata/
+
+# 编译产物
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods
+Pods/
+
+# Swift Package Manager
+.build/
+Package.resolved
+
+# 其他
+*.swp
+*~.nib
