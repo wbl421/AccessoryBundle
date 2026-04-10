@@ -637,14 +637,15 @@ struct DetailContentView: View {
         dataManager.accessories.first(where: { $0.id == accessoryId })
     }
 
-    private var displayImage: UIImage? {
-        if let imagePath = detail.displayImagePath {
-            return ImageStorage.shared.loadImage(filename: imagePath)
+    private var displayImages: [UIImage] {
+        if let accessory = accessory, !accessory.thumbnailPaths.isEmpty {
+            return accessory.thumbnailPaths.compactMap { ImageStorage.shared.loadImage(filename: $0) }
         }
-        if let imagePath = accessory?.imagePath {
-            return ImageStorage.shared.loadImage(filename: imagePath)
+        if let imagePath = detail.displayImagePath,
+           let image = ImageStorage.shared.loadImage(filename: imagePath) {
+            return [image]
         }
-        return nil
+        return []
     }
 
     private var categoryName: String? {
@@ -680,24 +681,18 @@ struct DetailContentView: View {
                 .background(Color(.systemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                // 2. 缩略图
-                Group {
-                    if let image = displayImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                    } else {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.gray.opacity(0.1))
-                            .frame(height: 200)
-                            .overlay {
-                                Image(systemName: "photo")
-                                    .font(.system(size: 50))
-                                    .foregroundStyle(.secondary)
-                            }
-                    }
+                // 2. 缩略图轮播
+                if displayImages.isEmpty {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.gray.opacity(0.1))
+                        .frame(height: 200)
+                        .overlay {
+                            Image(systemName: "photo")
+                                .font(.system(size: 50))
+                                .foregroundStyle(.secondary)
+                        }
+                } else {
+                    ImageCarouselView(images: displayImages, cornerRadius: 16)
                 }
 
                 // 3. 商品简介
@@ -721,16 +716,16 @@ struct DetailContentView: View {
                         Text("商品详情")
                             .font(.headline)
 
-                        VStack(spacing: 8) {
+                        VStack(spacing: 0) {
                             ForEach(detailImages.indices, id: \.self) { index in
                                 if let image = ImageStorage.shared.loadImage(filename: detailImages[index]) {
                                     Image(uiImage: image)
                                         .resizable()
                                         .scaledToFit()
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
                             }
                         }
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     .padding(16)
                     .background(Color(.systemBackground))
@@ -816,14 +811,15 @@ struct AccessoryDetailPopupNew: View {
         dataManager.accessories.first(where: { $0.id == accessoryId })
     }
 
-    private var displayImage: UIImage? {
-        if let imagePath = detail.displayImagePath {
-            return ImageStorage.shared.loadImage(filename: imagePath)
+    private var displayImages: [UIImage] {
+        if let accessory = accessory, !accessory.thumbnailPaths.isEmpty {
+            return accessory.thumbnailPaths.compactMap { ImageStorage.shared.loadImage(filename: $0) }
         }
-        if let imagePath = accessory?.imagePath {
-            return ImageStorage.shared.loadImage(filename: imagePath)
+        if let imagePath = detail.displayImagePath,
+           let image = ImageStorage.shared.loadImage(filename: imagePath) {
+            return [image]
         }
-        return nil
+        return []
     }
 
     private var categoryName: String? {
@@ -873,24 +869,18 @@ struct AccessoryDetailPopupNew: View {
                     .background(Color(.systemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                    // 2. 缩略图
-                    Group {
-                        if let image = displayImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: .infinity)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                        } else {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.gray.opacity(0.1))
-                                .frame(height: 200)
-                                .overlay {
-                                    Image(systemName: "photo")
-                                        .font(.system(size: 50))
-                                        .foregroundStyle(.secondary)
-                                }
-                        }
+                    // 2. 缩略图轮播
+                    if displayImages.isEmpty {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.gray.opacity(0.1))
+                            .frame(height: 200)
+                            .overlay {
+                                Image(systemName: "photo")
+                                    .font(.system(size: 50))
+                                    .foregroundStyle(.secondary)
+                            }
+                    } else {
+                        ImageCarouselView(images: displayImages, cornerRadius: 16)
                     }
 
                     // 3. 商品简介
@@ -914,16 +904,16 @@ struct AccessoryDetailPopupNew: View {
                             Text("商品详情")
                                 .font(.headline)
 
-                            VStack(spacing: 8) {
+                            VStack(spacing: 0) {
                                 ForEach(detailImages.indices, id: \.self) { index in
                                     if let image = ImageStorage.shared.loadImage(filename: detailImages[index]) {
                                         Image(uiImage: image)
                                             .resizable()
                                             .scaledToFit()
-                                            .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                 }
                             }
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                         .padding(16)
                         .background(Color(.systemBackground))

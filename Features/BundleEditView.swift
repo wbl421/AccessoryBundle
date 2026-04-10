@@ -130,31 +130,40 @@ struct BundleEditView: View {
         let catId = category?.id as UUID?
         let isExpanded = expandedCategories.contains(catId)
         
-        return DisclosureGroup(isExpanded: Binding(
-            get: { isExpanded },
-            set: { expanding in
-                if expanding {
-                    expandedCategories.insert(catId)
-                } else {
-                    expandedCategories.remove(catId)
+        return VStack(spacing: 0) {
+            // 分类标题行 - 点击展开/折叠
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if isExpanded {
+                        expandedCategories.remove(catId)
+                    } else {
+                        expandedCategories.insert(catId)
+                    }
                 }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
+                    Text(category?.name ?? "未分类")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Text("(\(items.count))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .padding(.vertical, 8)
             }
-        )) {
-            ForEach(items) { item in
-                accessoryItemRow(item)
-            }
-            .onDelete { offsets in
-                let idsToRemove = offsets.map { items[$0].id }
-                selectedItems.removeAll { idsToRemove.contains($0.id) }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Text(category?.name ?? "未分类")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                Text("(\(items.count))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
+            
+            // 展开的配件列表
+            if isExpanded {
+                ForEach(items) { item in
+                    accessoryItemRow(item)
+                }
             }
         }
     }
@@ -163,7 +172,7 @@ struct BundleEditView: View {
         let accessory = dataManager.accessories.first { $0.id == item.accessoryId }
         return HStack(spacing: 12) {
             Group {
-                if let imagePath = item.customImagePath ?? accessory?.imagePath,
+                if let imagePath = item.customImagePath ?? accessory?.thumbnailPaths.first,
                    let image = ImageStorage.shared.loadImage(filename: imagePath) {
                     Image(uiImage: image)
                         .resizable()
@@ -341,54 +350,61 @@ struct AccessoryPickerSheet: View {
                 Divider()
                 
                 // 配件列表
-                List {
-                    ForEach(filteredAccessories) { accessory in
-                        Button {
-                            toggleAccessory(accessory)
-                        } label: {
-                            HStack {
-                                Group {
-                                    if let imagePath = accessory.imagePath,
-                                       let image = ImageStorage.shared.loadImage(filename: imagePath) {
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .scaledToFill()
-                                    } else {
-                                        Image(systemName: "photo")
-                                            .font(.title3)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredAccessories) { accessory in
+                            Button {
+                                toggleAccessory(accessory)
+                            } label: {
+                                HStack {
+                                    Group {
+                                        if let imagePath = accessory.thumbnailPaths.first,
+                                           let image = ImageStorage.shared.loadImage(filename: imagePath) {
+                                            Image(uiImage: image)
+                                                .resizable()
+                                                .scaledToFill()
+                                        } else {
+                                            Image(systemName: "photo")
+                                                .font(.title3)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .frame(width: 50, height: 50)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .background(Color.gray.opacity(0.1))
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(accessory.name)
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(.primary)
+
+                                        Text("¥\(accessory.price)")
+                                            .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
-                                }
-                                .frame(width: 50, height: 50)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .background(Color.gray.opacity(0.1))
 
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(accessory.name)
-                                        .font(.body)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(.primary)
-
-                                    Text("¥\(accessory.price)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    
+                                    // 选中/未选中状态
+                                    if isAdded(accessory) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.title2)
+                                            .foregroundStyle(.green)
+                                    } else {
+                                        Image(systemName: "plus.circle")
+                                            .font(.title2)
+                                            .foregroundStyle(.blue)
+                                    }
                                 }
-
-                                Spacer()
-                                
-                                // 选中/未选中状态
-                                if isAdded(accessory) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.title2)
-                                        .foregroundStyle(.green)
-                                } else {
-                                    Image(systemName: "plus.circle")
-                                        .font(.title2)
-                                        .foregroundStyle(.blue)
-                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(Color(.systemBackground))
                             }
+                            .buttonStyle(.plain)
+                            
+                            Divider().padding(.leading, 78)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }

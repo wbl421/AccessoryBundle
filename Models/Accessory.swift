@@ -46,24 +46,37 @@ struct Accessory: Identifiable, Codable, Equatable {
     var name: String
     var categoryId: UUID?
     var price: Int
-    var imagePath: String?
+    var imagePath: String? // 旧字段，保留兼容
+    var imagePaths: [String]? // 多张缩略图
     var description: String?
     var detailImages: [String]?
     var order: Int
 
-    init(id: UUID = UUID(), name: String, categoryId: UUID? = nil, price: Int, imagePath: String? = nil, description: String? = nil, detailImages: [String]? = nil, order: Int = 0) {
+    init(id: UUID = UUID(), name: String, categoryId: UUID? = nil, price: Int, imagePath: String? = nil, imagePaths: [String]? = nil, description: String? = nil, detailImages: [String]? = nil, order: Int = 0) {
         self.id = id
         self.name = name
         self.categoryId = categoryId
         self.price = price
         self.imagePath = imagePath
+        self.imagePaths = imagePaths
         self.description = description
         self.detailImages = detailImages
         self.order = order
     }
 
+    // 获取所有缩略图路径（优先用 imagePaths，兼容旧 imagePath）
+    var thumbnailPaths: [String] {
+        if let paths = imagePaths, !paths.isEmpty {
+            return paths
+        }
+        if let path = imagePath {
+            return [path]
+        }
+        return []
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, name, price, imagePath, description, order
+        case id, name, price, imagePath, imagePaths, description, order
         case categoryId, detailImages
         case images
     }
@@ -75,6 +88,7 @@ struct Accessory: Identifiable, Codable, Equatable {
         categoryId = try container.decodeIfPresent(UUID.self, forKey: .categoryId)
         price = try container.decode(Int.self, forKey: .price)
         imagePath = try container.decodeIfPresent(String.self, forKey: .imagePath)
+        imagePaths = try container.decodeIfPresent([String].self, forKey: .imagePaths)
         description = try container.decodeIfPresent(String.self, forKey: .description)
         order = try container.decodeIfPresent(Int.self, forKey: .order) ?? 0
 
@@ -94,6 +108,7 @@ struct Accessory: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(categoryId, forKey: .categoryId)
         try container.encode(price, forKey: .price)
         try container.encodeIfPresent(imagePath, forKey: .imagePath)
+        try container.encodeIfPresent(imagePaths, forKey: .imagePaths)
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(detailImages, forKey: .detailImages)
         try container.encode(order, forKey: .order)

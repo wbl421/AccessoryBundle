@@ -187,7 +187,7 @@ class DataManager: ObservableObject {
                     accessoryId: item.accessoryId,
                     displayName: item.customName ?? accessory?.name ?? "",
                     displayPrice: item.customPrice ?? accessory?.price ?? 0,
-                    displayImagePath: item.customImagePath ?? accessory?.imagePath,
+                    displayImagePath: item.customImagePath ?? accessory?.thumbnailPaths.first,
                     quantity: item.quantity,
                     order: item.order
                 )
@@ -378,6 +378,7 @@ class DataManager: ObservableObject {
                     categoryId: nil,
                     price: accessories[i].price,
                     imagePath: accessories[i].imagePath,
+                    imagePaths: accessories[i].imagePaths,
                     description: accessories[i].description,
                     detailImages: accessories[i].detailImages,
                     order: accessories[i].order

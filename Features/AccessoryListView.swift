@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 // MARK: - Image Storage
 class ImageStorage {
@@ -14,15 +15,28 @@ class ImageStorage {
     }
 
     func saveImage(_ image: UIImage, for id: UUID) -> String? {
-        guard let data = image.jpegData(compressionQuality: 0.8) else { return nil }
-        let filename = "\(id.uuidString).jpg"
-        let url = imagesDirectory.appendingPathComponent(filename)
-        do {
-            try data.write(to: url)
-            return filename
-        } catch {
-            return nil
+        // 优先 JPEG，失败则用 PNG
+        if let data = image.jpegData(compressionQuality: 0.8) {
+            let filename = "\(id.uuidString).jpg"
+            let url = imagesDirectory.appendingPathComponent(filename)
+            do {
+                try data.write(to: url)
+                return filename
+            } catch {
+                // JPEG 写入失败，尝试 PNG
+            }
         }
+        if let data = image.pngData() {
+            let filename = "\(id.uuidString).png"
+            let url = imagesDirectory.appendingPathComponent(filename)
+            do {
+                try data.write(to: url)
+                return filename
+            } catch {
+                return nil
+            }
+        }
+        return nil
     }
 
     func loadImage(filename: String) -> UIImage? {
@@ -34,6 +48,49 @@ class ImageStorage {
     func deleteImage(filename: String) {
         let url = imagesDirectory.appendingPathComponent(filename)
         try? FileManager.default.removeItem(at: url)
+    }
+}
+
+// MARK: - Image Carousel View (图片轮播，类似苹果官网效果)
+struct ImageCarouselView: View {
+    let images: [UIImage]
+    var cornerRadius: CGFloat = 16
+    var imageHeight: CGFloat = 300
+
+    @State private var currentIndex: Int = 0
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // 图片区域
+            TabView(selection: $currentIndex) {
+                ForEach(images.indices, id: \.self) { index in
+                    Image(uiImage: images[index])
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: imageHeight)
+                        .clipped()
+                        .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(height: imageHeight)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+
+            // 小点指示器（只有多张图才显示）
+            if images.count > 1 {
+                HStack(spacing: 8) {
+                    ForEach(images.indices, id: \.self) { index in
+                        Capsule()
+                            .fill(index == currentIndex ? Color.accentColor : Color.gray.opacity(0.3))
+                            .frame(
+                                width: index == currentIndex ? 20 : 8,
+                                height: 8
+                            )
+                            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: currentIndex)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -144,7 +201,7 @@ struct AccessoryListView: View {
         .sheet(isPresented: $showAllAccessories) {
             CategoryAccessoriesSheet(
                 categoryName: "全部配件",
-                accessories: allAccessories,
+                allAccessories: allAccessories,
                 onAddAccessory: { showingAddSheet = true }
             )
         }
@@ -158,13 +215,13 @@ struct AccessoryListView: View {
             if identifiableId.id == unassignedId {
                 CategoryAccessoriesSheet(
                     categoryName: "未分类",
-                    accessories: unassignedAccessories,
+                    showUnassigned: true,
                     onAddAccessory: { showingAddSheet = true }
                 )
             } else if let category = category {
                 CategoryAccessoriesSheet(
                     categoryName: category.name,
-                    accessories: accessories(for: category.id),
+                    categoryId: category.id,
                     onAddAccessory: { showingAddSheet = true }
                 )
             }
@@ -462,9 +519,25 @@ struct CategorySectionView: View {
 // MARK: - Category Accessories Sheet (底部弹出的配件列表)
 struct CategoryAccessoriesSheet: View {
     let categoryName: String
-    let accessories: [Accessory]
+    var categoryId: UUID? = nil
+    var allAccessories: [Accessory]? = nil // 全部配件场景
+    var showUnassigned: Bool = false // 未分类配件场景
     let onAddAccessory: () -> Void
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
+    @State private var showingAddSheet = false
+
+    // 动态获取最新配件数据，编辑后自动刷新
+    private var accessories: [Accessory] {
+        if let categoryId = categoryId {
+            return dataManager.accessories.filter { $0.categoryId == categoryId }.sorted { $0.order < $1.order }
+        }
+        if showUnassigned {
+            return dataManager.accessories.filter { $0.categoryId == nil }.sorted { $0.order < $1.order }
+        }
+        if let all = allAccessories { return all }
+        return dataManager.accessories.sorted { $0.order < $1.order }
+    }
     
     var body: some View {
         NavigationStack {
@@ -478,8 +551,7 @@ struct CategoryAccessoriesSheet: View {
                             .font(.headline)
                             .foregroundStyle(.secondary)
                         Button {
-                            dismiss()
-                            onAddAccessory()
+                            showingAddSheet = true
                         } label: {
                             Text("添加配件")
                                 .font(.subheadline)
@@ -489,7 +561,7 @@ struct CategoryAccessoriesSheet: View {
                     .padding(.vertical, 40)
                 } else {
                     ForEach(accessories) { accessory in
-                        NavigationLink(destination: AccessoryDetailView(accessory: accessory)) {
+                        NavigationLink(destination: AccessoryDetailView(accessoryId: accessory.id)) {
                             AccessoryCompactRow(accessory: accessory)
                         }
                     }
@@ -503,12 +575,16 @@ struct CategoryAccessoriesSheet: View {
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        dismiss()
-                        onAddAccessory()
+                        showingAddSheet = true
                     } label: {
                         Image(systemName: "plus")
                     }
                 }
+            }
+            .sheet(isPresented: $showingAddSheet) {
+                AccessoryEditView(accessory: nil, defaultCategoryId: categoryId)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.hidden)
             }
         }
         .presentationDetents([.medium, .large])
@@ -529,7 +605,7 @@ struct AccessoryCompactRow: View {
     var body: some View {
         HStack(spacing: 12) {
             // 缩略图
-            if let imagePath = accessory.imagePath,
+            if let imagePath = accessory.thumbnailPaths.first,
                let image = ImageStorage.shared.loadImage(filename: imagePath) {
                 Image(uiImage: image)
                     .resizable()
@@ -572,10 +648,6 @@ struct AccessoryCompactRow: View {
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.red)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 14)
@@ -592,7 +664,7 @@ struct AccessoryProductRow: View {
     var body: some View {
         HStack(spacing: 12) {
             // 缩略图
-            if let imagePath = accessory.imagePath,
+            if let imagePath = accessory.thumbnailPaths.first,
                let image = ImageStorage.shared.loadImage(filename: imagePath) {
                 Image(uiImage: image)
                     .resizable()
@@ -652,97 +724,107 @@ struct AccessoryProductRow: View {
 
 // MARK: - Accessory Detail View (商品详情页)
 struct AccessoryDetailView: View {
-    let accessory: Accessory
+    let accessoryId: UUID
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
     @State private var showingEditAccessory = false
 
+    private var accessory: Accessory? {
+        dataManager.accessories.first(where: { $0.id == accessoryId })
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // 商品主图和基本信息
-                productHeaderCard
+        Group {
+            if let accessory = accessory {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // 商品主图和基本信息
+                        productHeaderCard(accessory)
 
-                // 商品简介
-                if let description = accessory.description, !description.isEmpty {
-                    descriptionCard(description)
-                }
+                        // 商品简介
+                        if let description = accessory.description, !description.isEmpty {
+                            descriptionCard(description)
+                        }
 
-                // 详情图片
-                if let detailImages = accessory.detailImages, !detailImages.isEmpty {
-                    detailImagesSection(detailImages)
-                }
-            }
-            .padding(16)
-        }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle("商品详情")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button { showingEditAccessory = true } label: {
-                        Label("编辑商品", systemImage: "pencil")
+                        // 详情图片
+                        if let detailImages = accessory.detailImages, !detailImages.isEmpty {
+                            detailImagesSection(detailImages)
+                        }
                     }
-                    Button(role: .destructive) { deleteAccessory() } label: {
-                        Label("删除商品", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+                    .padding(16)
                 }
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle("商品详情")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Button { showingEditAccessory = true } label: {
+                                Label("编辑商品", systemImage: "pencil")
+                            }
+                            Button(role: .destructive) { deleteAccessory() } label: {
+                                Label("删除商品", systemImage: "trash")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    }
+                }
+                .sheet(isPresented: $showingEditAccessory) {
+                    AccessoryEditView(accessory: accessory)
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.hidden)
+                }
+            } else {
+                Text("商品不存在")
+                    .foregroundStyle(.secondary)
             }
-        }
-        .sheet(isPresented: $showingEditAccessory) {
-            AccessoryEditView(accessory: accessory)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
         }
     }
 
-    private var productHeaderCard: some View {
-        HStack(spacing: 16) {
-            // 商品主图
-            if let imagePath = accessory.imagePath,
-               let image = ImageStorage.shared.loadImage(filename: imagePath) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 100, height: 100)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else {
+    private func productHeaderCard(_ accessory: Accessory) -> some View {
+        VStack(spacing: 16) {
+            // 缩略图轮播
+            let paths = accessory.thumbnailPaths
+            let loadedImages = paths.compactMap { ImageStorage.shared.loadImage(filename: $0) }
+            if loadedImages.isEmpty {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.gray.opacity(0.1))
-                    .frame(width: 100, height: 100)
+                    .frame(height: 200)
                     .overlay {
                         Image(systemName: "photo")
-                            .font(.title)
+                            .font(.system(size: 50))
                             .foregroundStyle(.secondary)
                     }
+            } else {
+                ImageCarouselView(images: loadedImages, cornerRadius: 12)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(accessory.name)
-                    .font(.title2)
-                    .fontWeight(.bold)
+            // 名称和价格
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(accessory.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
 
-                Text("¥\(accessory.price)")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.red)
+                    Text("¥\(accessory.price)")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.red)
 
-                if let categoryId = accessory.categoryId,
-                   let category = dataManager.accessoryCategories.first(where: { $0.id == categoryId }) {
-                    Text(category.name)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundStyle(.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    if let categoryId = accessory.categoryId,
+                       let category = dataManager.accessoryCategories.first(where: { $0.id == categoryId }) {
+                        Text(category.name)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundStyle(.blue)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
                 }
+                Spacer()
             }
-
-            Spacer()
         }
         .padding(16)
         .background(Color(.systemBackground))
@@ -769,17 +851,17 @@ struct AccessoryDetailView: View {
                 .font(.headline)
                 .padding(.horizontal, 4)
 
-            // 竖向排列详情图（类似淘宝详情页）
-            VStack(spacing: 8) {
+            // 竖向排列详情图，无缝拼接
+            VStack(spacing: 0) {
                 ForEach(imagePaths.indices, id: \.self) { index in
                     if let image = ImageStorage.shared.loadImage(filename: imagePaths[index]) {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFit()
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .padding(16)
         .background(Color(.systemBackground))
@@ -787,8 +869,9 @@ struct AccessoryDetailView: View {
     }
 
     private func deleteAccessory() {
+        guard let accessory = accessory else { return }
         // 删除所有图片
-        if let path = accessory.imagePath {
+        for path in accessory.thumbnailPaths {
             ImageStorage.shared.deleteImage(filename: path)
         }
         accessory.detailImages?.forEach { ImageStorage.shared.deleteImage(filename: $0) }
@@ -1135,6 +1218,7 @@ struct IconPickerSheet: View {
 // MARK: - Accessory Edit View (淘宝商家后台编辑风格)
 struct AccessoryEditView: View {
     let accessory: Accessory?
+    var defaultCategoryId: UUID? = nil
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var dataManager: DataManager
 
@@ -1142,8 +1226,10 @@ struct AccessoryEditView: View {
     @State private var selectedCategoryId: UUID?
     @State private var priceText = ""
     @State private var description = ""
-    @State private var thumbnailImage: UIImage?
+    @State private var thumbnailImages: [UIImage] = []
+    @State private var thumbnailImagePaths: [String?] = [] // 对应每张缩略图的文件路径，nil=新图片
     @State private var detailImages: [UIImage] = []
+    @State private var detailImagePaths: [String?] = [] // 对应每张详情图的文件路径，nil=新图片
     @State private var showThumbnailPicker = false
     @State private var showDetailImagePicker = false
     @FocusState private var focusedField: Field?
@@ -1198,7 +1284,7 @@ struct AccessoryEditView: View {
                 }
             }
             .fullScreenCover(isPresented: $showThumbnailPicker) {
-                PhotoPicker(selectedImage: $thumbnailImage, isPresented: $showThumbnailPicker)
+                MultiPhotoPicker(selectedImages: $thumbnailImages, isPresented: $showThumbnailPicker)
             }
             .fullScreenCover(isPresented: $showDetailImagePicker) {
                 MultiPhotoPicker(selectedImages: $detailImages, isPresented: $showDetailImagePicker)
@@ -1209,19 +1295,36 @@ struct AccessoryEditView: View {
                     selectedCategoryId = accessory.categoryId
                     priceText = String(accessory.price)
                     description = accessory.description ?? ""
-                    // 加载缩略图
-                    if let mainPath = accessory.imagePath,
-                       let mainImage = ImageStorage.shared.loadImage(filename: mainPath) {
-                        thumbnailImage = mainImage
+                    // 加载缩略图（兼容旧的 imagePath 和新的 imagePaths）
+                    for path in accessory.thumbnailPaths {
+                        if let img = ImageStorage.shared.loadImage(filename: path) {
+                            thumbnailImages.append(img)
+                            thumbnailImagePaths.append(path) // 已有路径，保存时不需要重新写入
+                        }
                     }
                     // 加载详情图片
-                    if let imagePaths = accessory.detailImages {
-                        for path in imagePaths {
+                    if let imgPaths = accessory.detailImages {
+                        for path in imgPaths {
                             if let img = ImageStorage.shared.loadImage(filename: path) {
                                 detailImages.append(img)
+                                detailImagePaths.append(path) // 已有路径
                             }
                         }
                     }
+                } else {
+                    // 新建时，使用传入的默认分类
+                    selectedCategoryId = defaultCategoryId
+                }
+            }
+            .onChange(of: thumbnailImages) { newValue in
+                // 新增的图片（picker添加的），路径标记为nil
+                while thumbnailImagePaths.count < newValue.count {
+                    thumbnailImagePaths.append(nil)
+                }
+            }
+            .onChange(of: detailImages) { newValue in
+                while detailImagePaths.count < newValue.count {
+                    detailImagePaths.append(nil)
                 }
             }
         }
@@ -1234,19 +1337,26 @@ struct AccessoryEditView: View {
                 Text("商品缩略图")
                     .font(.headline)
                 Spacer()
+                if !thumbnailImages.isEmpty {
+                    Button {
+                        focusedField = nil
+                        showThumbnailPicker = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                            Text("添加")
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.blue)
+                    }
+                }
             }
 
-            Button {
-                focusedField = nil
-                showThumbnailPicker = true
-            } label: {
-                if let image = thumbnailImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 120, height: 120)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
+            if thumbnailImages.isEmpty {
+                Button {
+                    focusedField = nil
+                    showThumbnailPicker = true
+                } label: {
                     RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8]))
                         .frame(width: 120, height: 120)
@@ -1260,8 +1370,52 @@ struct AccessoryEditView: View {
                             .foregroundStyle(.secondary)
                         }
                 }
+                .buttonStyle(.plain)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(thumbnailImages.indices, id: \.self) { index in
+                            ZStack(alignment: .topTrailing) {
+                                Image(uiImage: thumbnailImages[index])
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 120, height: 120)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                                Button {
+                                    thumbnailImagePaths.remove(at: index)
+                                    thumbnailImages.remove(at: index)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.white, .red)
+                                }
+                                .padding(4)
+                            }
+                        }
+
+                        // 添加按钮
+                        Button {
+                            focusedField = nil
+                            showThumbnailPicker = true
+                        } label: {
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8]))
+                                .frame(width: 120, height: 120)
+                                .overlay {
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "plus")
+                                            .font(.title2)
+                                        Text("添加")
+                                            .font(.caption)
+                                    }
+                                    .foregroundStyle(.secondary)
+                                }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
-            .buttonStyle(.plain)
         }
         .padding(16)
         .background(Color(.systemBackground))
@@ -1407,16 +1561,16 @@ struct AccessoryEditView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
-                // 竖向排列预览
-                VStack(spacing: 8) {
+                // 竖向排列预览，无缝拼接，每张图可单独删除
+                VStack(spacing: 0) {
                     ForEach(detailImages.indices, id: \.self) { index in
                         ZStack(alignment: .topTrailing) {
                             Image(uiImage: detailImages[index])
                                 .resizable()
                                 .scaledToFit()
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-
+                            
                             Button {
+                                detailImagePaths.remove(at: index)
                                 detailImages.remove(at: index)
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
@@ -1427,6 +1581,7 @@ struct AccessoryEditView: View {
                         }
                     }
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .padding(16)
@@ -1435,36 +1590,59 @@ struct AccessoryEditView: View {
     }
 
     private func saveAccessory() {
-        // 保存缩略图
-        var imagePath: String? = nil
-        if let thumbnail = thumbnailImage {
-            let mainId = accessory?.id ?? UUID()
-            imagePath = ImageStorage.shared.saveImage(thumbnail, for: mainId)
+        // 保存缩略图：已有路径的直接复用，新图片才写入磁盘
+        var savedThumbnailPaths: [String] = []
+        for i in thumbnailImages.indices {
+            if let existingPath = thumbnailImagePaths[i] {
+                // 已有路径，不需要重新保存
+                savedThumbnailPaths.append(existingPath)
+            } else {
+                // 新图片，保存到磁盘
+                let imgId = UUID()
+                if let path = ImageStorage.shared.saveImage(thumbnailImages[i], for: imgId) {
+                    savedThumbnailPaths.append(path)
+                }
+            }
         }
 
-        // 保存详情图片
-        var detailImagePaths: [String] = []
-        for image in detailImages {
-            let imgId = UUID()
-            if let path = ImageStorage.shared.saveImage(image, for: imgId) {
-                detailImagePaths.append(path)
+        // 保存详情图片：同理
+        var savedDetailPaths: [String] = []
+        for i in detailImages.indices {
+            if let existingPath = detailImagePaths[i] {
+                savedDetailPaths.append(existingPath)
+            } else {
+                let imgId = UUID()
+                if let path = ImageStorage.shared.saveImage(detailImages[i], for: imgId) {
+                    savedDetailPaths.append(path)
+                }
             }
         }
 
         if let existingAccessory = accessory {
-            // 删除旧图片
-            if let oldPath = existingAccessory.imagePath, oldPath != imagePath {
-                ImageStorage.shared.deleteImage(filename: oldPath)
+            // 删除被移除的旧缩略图文件
+            let oldThumbnailPaths = existingAccessory.thumbnailPaths
+            for oldPath in oldThumbnailPaths {
+                if !savedThumbnailPaths.contains(oldPath) {
+                    ImageStorage.shared.deleteImage(filename: oldPath)
+                }
             }
-            existingAccessory.detailImages?.forEach { ImageStorage.shared.deleteImage(filename: $0) }
+            // 删除被移除的旧详情图文件
+            if let oldDetailPaths = existingAccessory.detailImages {
+                for oldPath in oldDetailPaths {
+                    if !savedDetailPaths.contains(oldPath) {
+                        ImageStorage.shared.deleteImage(filename: oldPath)
+                    }
+                }
+            }
 
             var updated = existingAccessory
             updated.name = name
             updated.categoryId = selectedCategoryId
             updated.price = price
-            updated.imagePath = imagePath
+            updated.imagePath = savedThumbnailPaths.first // 兼容旧字段
+            updated.imagePaths = savedThumbnailPaths.isEmpty ? nil : savedThumbnailPaths
             updated.description = description.isEmpty ? nil : description
-            updated.detailImages = detailImagePaths.isEmpty ? nil : detailImagePaths
+            updated.detailImages = savedDetailPaths.isEmpty ? nil : savedDetailPaths
             dataManager.updateAccessory(updated)
         } else {
             let maxOrder = dataManager.accessories.map(\.order).max() ?? -1
@@ -1472,9 +1650,10 @@ struct AccessoryEditView: View {
                 name: name,
                 categoryId: selectedCategoryId,
                 price: price,
-                imagePath: imagePath,
+                imagePath: savedThumbnailPaths.first,
+                imagePaths: savedThumbnailPaths.isEmpty ? nil : savedThumbnailPaths,
                 description: description.isEmpty ? nil : description,
-                detailImages: detailImagePaths.isEmpty ? nil : detailImagePaths,
+                detailImages: savedDetailPaths.isEmpty ? nil : savedDetailPaths,
                 order: maxOrder + 1
             )
             dataManager.addAccessory(newAccessory)
@@ -1483,41 +1662,72 @@ struct AccessoryEditView: View {
     }
 }
 
-// MARK: - Multi Photo Picker
+// MARK: - Multi Photo Picker (支持多选)
 struct MultiPhotoPicker: UIViewControllerRepresentable {
     @Binding var selectedImages: [UIImage]
     @Binding var isPresented: Bool
 
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        config.selectionLimit = 0  // 0 = 不限制，支持多选
+        config.filter = .images
+        config.selection = .ordered  // 显示选择顺序，类似微信
+        let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
-        picker.allowsEditing = false
-        picker.sourceType = .photoLibrary
         return picker
     }
 
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
         let parent: MultiPhotoPicker
 
         init(_ parent: MultiPhotoPicker) {
             self.parent = parent
         }
 
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let image = info[.originalImage] as? UIImage {
-                parent.selectedImages.append(image)
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            guard !results.isEmpty else {
+                parent.isPresented = false
+                return
             }
-            parent.isPresented = false
-        }
 
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.isPresented = false
+            let group = DispatchGroup()
+            var imageDict: [Int: UIImage] = [:]
+
+            for (index, result) in results.enumerated() {
+                if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
+                    group.enter()
+                    // 使用 loadDataRepresentation 获取原始图片数据，更可靠
+                    result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, error in
+                        if let data = data, let image = UIImage(data: data) {
+                            // 确保 UIImage 有 CGImage（能正确 jpegData/pngData）
+                            if image.cgImage != nil {
+                                imageDict[index] = image
+                            } else {
+                                // CGImage 为 nil，通过重绘来生成有效的 UIImage
+                                UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
+                                image.draw(in: CGRect(origin: .zero, size: image.size))
+                                if let redrawn = UIGraphicsGetImageFromCurrentImageContext() {
+                                    imageDict[index] = redrawn
+                                }
+                                UIGraphicsEndImageContext()
+                            }
+                        }
+                        group.leave()
+                    }
+                }
+            }
+
+            group.notify(queue: .main) { [self] in
+                let sortedImages = imageDict.sorted(by: { $0.key < $1.key }).map(\.value)
+                self.parent.selectedImages.append(contentsOf: sortedImages)
+                self.parent.isPresented = false
+            }
         }
     }
 }
