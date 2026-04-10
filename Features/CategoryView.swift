@@ -60,7 +60,6 @@ struct BundleListView: View {
     @State private var dragOffset: CGFloat = 0
     @State private var dragTargetIndex: Int?
     @State private var localBundles: [Bundle] = []
-    @State private var selectedBundleId: UUID?
     @State private var longPressItem: Bundle?
     
     // 震动反馈生成器（提前创建）
@@ -84,22 +83,11 @@ struct BundleListView: View {
                         longPressItem: longPressItem,
                         localBundles: localBundles,
                         isEditMode: isEditMode,
-                        onSelect: { selectedBundleId = $0 },
                         onDragStart: { startDrag($0, $1, $2) },
                         onDragUpdate: { updateDrag($0, $1) },
                         onDragEnd: { endDrag($0, $1, $2) },
                         onLongPress: { longPressItem = $0 },
                         onDelete: { onDeleteBundle($0) }
-                    )
-                    .background(
-                        NavigationLink(
-                            destination: BundleDetailView(bundleId: element.id),
-                            tag: element.id,
-                            selection: $selectedBundleId
-                        ) {
-                            EmptyView()
-                        }
-                        .opacity(0)
                     )
                 }
             }
@@ -116,6 +104,9 @@ struct BundleListView: View {
         }
         .onChange(of: bundles) { newValue in
             localBundles = newValue
+        }
+        .navigationDestination(for: UUID.self) { bundleId in
+            BundleDetailView(bundleId: bundleId)
         }
     }
     
@@ -171,7 +162,6 @@ struct DraggableBundleRow: View {
     let longPressItem: Bundle?
     let localBundles: [Bundle]
     var isEditMode: Bool = false
-    let onSelect: (UUID) -> Void
     let onDragStart: (Bundle, Int, [Bundle]) -> Void
     let onDragUpdate: (CGFloat, Int?) -> Void
     let onDragEnd: (Bundle, Int, Int) -> Void
@@ -257,12 +247,11 @@ struct DraggableBundleRow: View {
                         .padding(.leading, 12)
                     }
             } else {
-                // 非编辑模式：只能点击进入详情，ScrollView 正常滚动
-                BundleCard(bundle: bundle, isDragging: false, isEditMode: false, onDelete: {})
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        onSelect(bundle.id)
-                    }
+                // 非编辑模式：NavigationLink 导航到详情
+                NavigationLink(value: bundle.id) {
+                    BundleCard(bundle: bundle, isDragging: false, isEditMode: false, onDelete: {})
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -330,9 +319,6 @@ struct BundleCard: View {
                         Text(bundle.name)
                             .font(.headline)
                             .foregroundStyle(.primary)
-                        Text("\(accessoryCount)件配件")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Text("¥\(bundle.price)")

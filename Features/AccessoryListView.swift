@@ -124,10 +124,6 @@ struct AccessoryListView: View {
         dataManager.accessories.sorted { $0.order < $1.order }
     }
 
-    private var unassignedAccessories: [Accessory] {
-        dataManager.accessories.filter { $0.categoryId == nil }.sorted { $0.order < $1.order }
-    }
-
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
@@ -155,21 +151,6 @@ struct AccessoryListView: View {
                     onDragEnd: endDrag,
                     onLongPress: { longPressItem = $0 }
                 )
-
-                // 未分类配件（不参与排序）
-                if !unassignedAccessories.isEmpty {
-                    CategorySectionView(
-                        category: nil,
-                        categoryName: "未分类",
-                        categoryIcon: "tray.fill",
-                        categoryColor: .gray,
-                        accessoryCount: unassignedAccessories.count,
-                        onTap: { 
-                            selectedCategoryId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")
-                        },
-                        onAddAccessory: { showingAddSheet = true }
-                    )
-                }
             }
             .padding(16)
         }
@@ -210,15 +191,8 @@ struct AccessoryListView: View {
             set: { selectedCategoryId = $0?.id }
         )) { identifiableId in
             let category = sortedCategories.first { $0.id == identifiableId.id }
-            let unassignedId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")
             
-            if identifiableId.id == unassignedId {
-                CategoryAccessoriesSheet(
-                    categoryName: "未分类",
-                    showUnassigned: true,
-                    onAddAccessory: { showingAddSheet = true }
-                )
-            } else if let category = category {
+            if let category = category {
                 CategoryAccessoriesSheet(
                     categoryName: category.name,
                     categoryId: category.id,
@@ -521,7 +495,6 @@ struct CategoryAccessoriesSheet: View {
     let categoryName: String
     var categoryId: UUID? = nil
     var allAccessories: [Accessory]? = nil // 全部配件场景
-    var showUnassigned: Bool = false // 未分类配件场景
     let onAddAccessory: () -> Void
     @EnvironmentObject var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
@@ -531,9 +504,6 @@ struct CategoryAccessoriesSheet: View {
     private var accessories: [Accessory] {
         if let categoryId = categoryId {
             return dataManager.accessories.filter { $0.categoryId == categoryId }.sorted { $0.order < $1.order }
-        }
-        if showUnassigned {
-            return dataManager.accessories.filter { $0.categoryId == nil }.sorted { $0.order < $1.order }
         }
         if let all = allAccessories { return all }
         return dataManager.accessories.sorted { $0.order < $1.order }

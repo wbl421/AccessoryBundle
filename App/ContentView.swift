@@ -15,7 +15,6 @@ struct ContentView: View {
     @State private var isEditMode = false
     @State private var showDeleteAlert = false
     @State private var categoryToDelete: Category?
-    @State private var selectedCategoryId: UUID?
     
     // 拖拽相关
     @State private var dragItem: Category?
@@ -38,16 +37,21 @@ struct ContentView: View {
             GeometryReader { geometry in
                 let geometryFrame = geometry.frame(in: .global)
                 ZStack {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            headerView
-                            categoryGrid(geometry: geometry)
-                            Spacer(minLength: 40)
-                            accessoryButton
+                    VStack(spacing: 0) {
+                        ScrollView {
+                            VStack(spacing: 24) {
+                                headerView
+                                categoryGrid(geometry: geometry)
+                            }
+                            .padding(20)
                         }
-                        .padding(20)
+                        .background(Color(.systemGroupedBackground))
+                        
+                        accessoryButton
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(Color(.systemGroupedBackground))
                     }
-                    .background(Color(.systemGroupedBackground))
                     
                     // 拖动中的卡片渲染在最上层（在ScrollView外）
                     // 只有当实际开始拖动（有偏移）时才显示 overlay
@@ -114,6 +118,9 @@ struct ContentView: View {
             .onChange(of: dataManager.categories) { _ in
                 localCategories = dataManager.categories.sorted { $0.order < $1.order }
             }
+            .navigationDestination(for: Category.self) { category in
+                CategoryView(category: category)
+            }
         }
     }
 
@@ -132,19 +139,17 @@ struct ContentView: View {
         
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: columns), spacing: 16) {
             ForEach(Array(localCategories.enumerated()), id: \.element.id) { index, category in
-                // 整个卡片容器
-                ZStack(alignment: .topLeading) {
-                    // 卡片主体
+                if isEditMode {
+                    // 编辑模式：拖拽排序
                     ZStack(alignment: .topLeading) {
-                        CategoryCard(
-                            category: category,
-                            isIPad: isIPad,
-                            cardWidth: cardWidth,
-                            isDragging: false,
-                            isEditMode: isEditMode
-                        )
-                        // 编辑模式：删除按钮
-                        if isEditMode {
+                        ZStack(alignment: .topLeading) {
+                            CategoryCard(
+                                category: category,
+                                isIPad: isIPad,
+                                cardWidth: cardWidth,
+                                isDragging: false,
+                                isEditMode: true
+                            )
                             Button {
                                 categoryToDelete = category
                                 showDeleteAlert = true
@@ -157,106 +162,100 @@ struct ContentView: View {
                             .buttonStyle(.plain)
                             .offset(x: -8, y: -8)
                         }
-                    }
-                    // 被拖动的卡片：长按后放大，拖动时才透明
-                    .opacity(dragItem?.id == category.id && dragOffset != .zero ? 0.01 : 1)
-                    .scaleEffect(dragItem?.id == category.id ? 1.05 : 1)
-                    .animation(.spring(response: 0.25, dampingFraction: 0.7), value: dragItem?.id)
-                    .zIndex(dragItem?.id == category.id ? 100 : 0)
-                    // 其他卡片让位动画
-                    .offset(
-                        x: dragItem != nil && dragItem?.id != category.id ? offsetForCategory(at: index, cardWidth: cardWidth, spacing: spacing).width : 0,
-                        y: dragItem != nil && dragItem?.id != category.id ? offsetForCategory(at: index, cardWidth: cardWidth, spacing: spacing).height : 0
-                    )
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragTargetIndex)
-                    // 编辑模式：拖拽手势覆盖层
-                    .overlay(
-                        Group {
-                            if isEditMode {
-                                GridGestureHandlingView(
-                                    onLongPress: {
-                                        if dragItem == nil {
-                                            mediumFeedback.impactOccurred()
-                                            dragItem = category
-                                            dragTargetIndex = index
-                                        }
-                                    },
-                                    onDragChanged: { translation in
-                                        if dragItem?.id == category.id {
-                                            dragOffset = translation
-                                            let newIndex = calculateNewIndex(for: category, translation: translation, cardWidth: cardWidth, spacing: spacing)
-                                            if newIndex != dragTargetIndex {
-                                                lightFeedback.impactOccurred()
-                                                dragTargetIndex = newIndex
+                        .opacity(dragItem?.id == category.id && dragOffset != .zero ? 0.01 : 1)
+                        .scaleEffect(dragItem?.id == category.id ? 1.05 : 1)
+                        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: dragItem?.id)
+                        .zIndex(dragItem?.id == category.id ? 100 : 0)
+                        .offset(
+                            x: dragItem != nil && dragItem?.id != category.id ? offsetForCategory(at: index, cardWidth: cardWidth, spacing: spacing).width : 0,
+                            y: dragItem != nil && dragItem?.id != category.id ? offsetForCategory(at: index, cardWidth: cardWidth, spacing: spacing).height : 0
+                        )
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragTargetIndex)
+                        .overlay(
+                            Group {
+                                if isEditMode {
+                                    GridGestureHandlingView(
+                                        onLongPress: {
+                                            if dragItem == nil {
+                                                mediumFeedback.impactOccurred()
+                                                dragItem = category
+                                                dragTargetIndex = index
                                             }
-                                        }
-                                    },
-                                    onDragEnded: { _ in
-                                        if dragItem?.id == category.id, let targetIndex = dragTargetIndex {
-                                            let currentIndex = localCategories.firstIndex(where: { $0.id == category.id }) ?? 0
-                                            
-                                            if currentIndex != targetIndex {
-                                                let generator = UINotificationFeedbackGenerator()
-                                                generator.notificationOccurred(.success)
+                                        },
+                                        onDragChanged: { translation in
+                                            if dragItem?.id == category.id {
+                                                dragOffset = translation
+                                                let newIndex = calculateNewIndex(for: category, translation: translation, cardWidth: cardWidth, spacing: spacing)
+                                                if newIndex != dragTargetIndex {
+                                                    lightFeedback.impactOccurred()
+                                                    dragTargetIndex = newIndex
+                                                }
+                                            }
+                                        },
+                                        onDragEnded: { _ in
+                                            if dragItem?.id == category.id, let targetIndex = dragTargetIndex {
+                                                let currentIndex = localCategories.firstIndex(where: { $0.id == category.id }) ?? 0
                                                 
-                                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                                    let movedItem = localCategories.remove(at: currentIndex)
-                                                    localCategories.insert(movedItem, at: targetIndex)
-                                                }
-                                                for (i, cat) in localCategories.enumerated() {
-                                                    var updated = cat
-                                                    updated.order = i
-                                                    dataManager.updateCategory(updated)
+                                                if currentIndex != targetIndex {
+                                                    let generator = UINotificationFeedbackGenerator()
+                                                    generator.notificationOccurred(.success)
+                                                    
+                                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                                        let movedItem = localCategories.remove(at: currentIndex)
+                                                        localCategories.insert(movedItem, at: targetIndex)
+                                                    }
+                                                    for (i, cat) in localCategories.enumerated() {
+                                                        var updated = cat
+                                                        updated.order = i
+                                                        dataManager.updateCategory(updated)
+                                                    }
                                                 }
                                             }
+                                            dragItem = nil
+                                            dragOffset = .zero
+                                            dragTargetIndex = nil
                                         }
-                                        dragItem = nil
-                                        dragOffset = .zero
-                                        dragTargetIndex = nil
-                                    }
-                                )
+                                    )
+                                }
                             }
+                        )
+                    }
+                    .contentShape(Rectangle())
+                    .background(
+                        GeometryReader { cardGeometry in
+                            Color.clear
+                                .onAppear {
+                                    cardFrames[category.id] = cardGeometry.frame(in: .global)
+                                }
+                                .onChange(of: cardGeometry.frame(in: .global)) { newFrame in
+                                    cardFrames[category.id] = newFrame
+                                }
                         }
                     )
-                    
+                } else {
                     // 非编辑模式：NavigationLink 导航
-                    if !isEditMode {
-                        NavigationLink(destination: CategoryView(category: category)) {
-                            EmptyView()
+                    NavigationLink(value: category) {
+                        CategoryCard(
+                            category: category,
+                            isIPad: isIPad,
+                            cardWidth: cardWidth,
+                            isDragging: false,
+                            isEditMode: false
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .background(
+                        GeometryReader { cardGeometry in
+                            Color.clear
+                                .onAppear {
+                                    cardFrames[category.id] = cardGeometry.frame(in: .global)
+                                }
+                                .onChange(of: cardGeometry.frame(in: .global)) { newFrame in
+                                    cardFrames[category.id] = newFrame
+                                }
                         }
-                        .opacity(0)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.clear)
-                    }
+                    )
                 }
-                .contentShape(Rectangle())
-                .background(
-                    GeometryReader { cardGeometry in
-                        Color.clear
-                            .onAppear {
-                                cardFrames[category.id] = cardGeometry.frame(in: .global)
-                            }
-                            .onChange(of: cardGeometry.frame(in: .global)) { newFrame in
-                                cardFrames[category.id] = newFrame
-                            }
-                    }
-                )
-                .onTapGesture {
-                    if !isEditMode {
-                        selectedCategoryId = category.id
-                    }
-                }
-                // 导航
-                .background(
-                    NavigationLink(
-                        destination: CategoryView(category: category),
-                        tag: category.id,
-                        selection: $selectedCategoryId
-                    ) {
-                        EmptyView()
-                    }
-                    .hidden()
-                )
             }
         }
     }

@@ -31,12 +31,12 @@ struct AccessoryCategory: Identifiable, Codable, Equatable {
     }
 
     static let defaults: [AccessoryCategory] = [
-        AccessoryCategory(name: "保护壳类", icon: "iphone.gen3.radiowaves.left.and.right", order: 0),
-        AccessoryCategory(name: "膜类", icon: "square.split.1x2", order: 1),
-        AccessoryCategory(name: "充电类", icon: "bolt.fill", order: 2),
-        AccessoryCategory(name: "数据线类", icon: "cable.connector", order: 3),
-        AccessoryCategory(name: "音频类", icon: "headphones", order: 4),
-        AccessoryCategory(name: "其他", icon: "folder.fill", order: 5)
+        AccessoryCategory(name: "保护壳", icon: "iphone.gen3.radiowaves.left.and.right", order: 0),
+        AccessoryCategory(name: "保护膜", icon: "square.split.1x2", order: 1),
+        AccessoryCategory(name: "充电器", icon: "bolt.fill", order: 2),
+        AccessoryCategory(name: "数据线", icon: "cable.connector", order: 3),
+        AccessoryCategory(name: "蓝牙音响", icon: "speaker.wave.2", order: 4),
+        AccessoryCategory(name: "蓝牙耳机", icon: "headphones", order: 5)
     ]
 }
 

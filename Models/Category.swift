@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-struct Category: Identifiable, Codable, Equatable {
+struct Category: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     var name: String
     var icon: String

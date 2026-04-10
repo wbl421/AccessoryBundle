@@ -79,75 +79,13 @@ class DataManager: ObservableObject {
     private func seedDefaultData() {
         categories = Category.defaults
 
-        guard let iphone = categories.first(where: { $0.name == "iPhone" }),
-              let ipad = categories.first(where: { $0.name == "iPad" }),
-              let mac = categories.first(where: { $0.name == "Mac" }),
-              let watch = categories.first(where: { $0.name == "Watch" }) else { return }
+        guard let iphone = categories.first(where: { $0.name == "iPhone" }) else { return }
 
         bundles = [
-            Bundle(name: "基础套餐", price: 299, categoryId: iphone.id, order: 0),
-            Bundle(name: "标准套餐", price: 399, categoryId: iphone.id, order: 1),
-            Bundle(name: "豪华套餐", price: 599, categoryId: iphone.id, order: 2),
-            Bundle(name: "尊享套餐", price: 799, categoryId: iphone.id, order: 3),
-            Bundle(name: "基础套餐", price: 399, categoryId: ipad.id, order: 0),
-            Bundle(name: "标准套餐", price: 599, categoryId: ipad.id, order: 1),
-            Bundle(name: "豪华套餐", price: 799, categoryId: ipad.id, order: 2),
-            Bundle(name: "基础套餐", price: 599, categoryId: mac.id, order: 0),
-            Bundle(name: "豪华套餐", price: 999, categoryId: mac.id, order: 1),
-            Bundle(name: "基础套餐", price: 199, categoryId: watch.id, order: 0),
-            Bundle(name: "标准套餐", price: 299, categoryId: watch.id, order: 1)
+            Bundle(name: "基础套餐", price: 299, categoryId: iphone.id, order: 0)
         ]
 
-        accessories = [
-            Accessory(name: "保护壳", price: 169, order: 0),
-            Accessory(name: "钢化膜", price: 169, order: 1),
-            Accessory(name: "镜头膜", price: 129, order: 2),
-            Accessory(name: "30W 快充头", price: 199, order: 3),
-            Accessory(name: "45W 快充头", price: 299, order: 4),
-            Accessory(name: "数据线", price: 99, order: 5),
-            Accessory(name: "充电宝", price: 329, order: 6),
-            Accessory(name: "无线充电器", price: 199, order: 7),
-            Accessory(name: "蓝牙耳机", price: 399, order: 8),
-            Accessory(name: "屏幕保护险", price: 399, order: 9)
-        ]
-
-        let protectCase = accessories[0]
-        let film = accessories[1]
-        let lensFilm = accessories[2]
-        let charger30 = accessories[3]
-        let charger45 = accessories[4]
-        let cable = accessories[5]
-        let powerBank = accessories[6]
-        let screenInsurance = accessories[9]
-
-        var order = 0
-        for bundle in bundles {
-            switch bundle.name {
-            case "基础套餐":
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: protectCase.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: film.id, quantity: 1, order: order)); order += 1
-            case "标准套餐":
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: protectCase.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: film.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: lensFilm.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: charger30.id, quantity: 1, order: order)); order += 1
-            case "豪华套餐":
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: protectCase.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: film.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: lensFilm.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: charger45.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: cable.id, quantity: 1, order: order)); order += 1
-            case "尊享套餐":
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: protectCase.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: film.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: lensFilm.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: charger45.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: screenInsurance.id, quantity: 1, order: order)); order += 1
-                bundleAccessoryItems.append(BundleAccessoryItem(bundleId: bundle.id, accessoryId: powerBank.id, quantity: 1, order: order)); order += 1
-            default:
-                break
-            }
-        }
+        accessories = []
 
         save()
     }

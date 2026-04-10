@@ -179,9 +179,6 @@ struct BundleDetailView: View {
             HStack {
                 Text("配件列表")
                     .font(.headline)
-                Text("（共\(groups.reduce(0) { $0 + $1.totalCount })件）")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
                 Spacer()
             }
             .padding(.horizontal, 4)

@@ -45,55 +45,123 @@ struct BundleEditView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("套餐信息") {
-                    TextField("套餐名称", text: $name)
-                        .focused($focusedField, equals: .name)
-                    TextField("套餐价格", text: $priceText)
-                        .keyboardType(.numberPad)
-                        .focused($focusedField, equals: .price)
-                }
-                
-                // 已添加配件 - 按分类折叠显示
-                Section {
-                    if selectedItems.isEmpty {
-                        Text("暂无配件")
-                            .foregroundStyle(.secondary)
-                            .font(.subheadline)
-                    } else {
-                        ForEach(groupedItems, id: \.category?.id) { category, items in
-                            categorySection(category: category, items: items)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // 套餐信息
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("套餐信息")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+
+                        VStack(spacing: 0) {
+                            HStack {
+                                Text("套餐名称")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                TextField("请输入名称", text: $name)
+                                    .multilineTextAlignment(.trailing)
+                                    .focused($focusedField, equals: .name)
+                            }
+                            .padding(16)
+
+                            Divider().padding(.leading, 16)
+
+                            HStack {
+                                Text("套餐价格")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                TextField("元", text: $priceText)
+                                    .keyboardType(.numberPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .focused($focusedField, equals: .price)
+                            }
+                            .padding(16)
+                        }
+                        .background(Color(.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    }
+
+                    // 已添加配件 - 按分类折叠显示
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("已添加配件")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            if !selectedItems.isEmpty {
+                                Text("共\(selectedItems.count)件配件，\(groupedItems.count)个分类")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+
+                        if selectedItems.isEmpty {
+                            Text("暂无配件，点击下方添加")
+                                .foregroundStyle(.secondary)
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                                .padding(24)
+                                .background(Color(.systemBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+                        } else {
+                            VStack(spacing: 8) {
+                                ForEach(groupedItems, id: \.category?.id) { category, items in
+                                    categorySection(category: category, items: items)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
                         }
                     }
-                } header: {
-                    Text("已添加配件")
-                } footer: {
-                    if !selectedItems.isEmpty {
-                        Text("共\(selectedItems.count)件配件，\(groupedItems.count)个分类")
-                    }
-                }
 
-                Section {
-                    Button { showingAccessoryPicker = true } label: {
+                    // 添加配件按钮
+                    Button {
+                        showingAccessoryPicker = true
+                    } label: {
                         HStack {
                             Image(systemName: "plus.circle.fill")
                             Text("添加配件")
                         }
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(14)
+                        .background(Color(.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
-                }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
 
-                if isEditing {
-                    Section {
+                    // 删除按钮
+                    if isEditing {
                         Button(role: .destructive) { showingDeleteAlert = true } label: {
-                            HStack {
-                                Spacer()
-                                Text("删除此套餐")
-                                Spacer()
-                            }
+                            Text("删除此套餐")
+                                .fontWeight(.medium)
+                                .frame(maxWidth: .infinity)
+                                .padding(14)
+                                .background(Color(.systemBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
                     }
+
+                    Color.clear.frame(height: 300)
                 }
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle(isEditing ? "编辑套餐" : "新建套餐")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -133,7 +201,7 @@ struct BundleEditView: View {
         return VStack(spacing: 0) {
             // 分类标题行 - 点击展开/折叠
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     if isExpanded {
                         expandedCategories.remove(catId)
                     } else {
@@ -141,31 +209,42 @@ struct BundleEditView: View {
                     }
                 }
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 12)
-                    Text(category?.name ?? "未分类")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    Text("(\(items.count))")
                         .font(.caption)
+                        .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
+                        .frame(width: 16)
+
+                    Text(category?.name ?? "未分类")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+
+                    Text("(\(items.count))")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+
                     Spacer()
                 }
                 .contentShape(Rectangle())
-                .padding(.vertical, 8)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
             }
             .buttonStyle(.plain)
-            
+
             // 展开的配件列表
             if isExpanded {
-                ForEach(items) { item in
-                    accessoryItemRow(item)
+                Divider().padding(.leading, 16)
+                VStack(spacing: 0) {
+                    ForEach(items) { item in
+                        accessoryItemRow(item)
+                    }
                 }
             }
         }
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func accessoryItemRow(_ item: BundleAccessoryItem) -> some View {
