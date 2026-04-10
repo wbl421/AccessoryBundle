@@ -247,6 +247,15 @@ struct DraggableBundleRow: View {
                             }
                         )
                     )
+                    // 删除按钮放在最顶层，确保可点击
+                    .overlay(alignment: .leading) {
+                        Button(action: { onDelete(bundle) }) {
+                            Color.clear
+                        }
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                        .padding(.leading, 12)
+                    }
             } else {
                 // 非编辑模式：只能点击进入详情，ScrollView 正常滚动
                 BundleCard(bundle: bundle, isDragging: false, isEditMode: false, onDelete: {})
@@ -299,16 +308,12 @@ struct BundleCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // 编辑模式左侧显示删除按钮
+            // 编辑模式左侧显示删除图标（纯占位，实际点击在最外层overlay）
             if isEditMode {
-                Button(action: onDelete) {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.red)
-                }
-                .buttonStyle(.plain)
-                .contentShape(Rectangle())
-                .frame(width: 44, height: 44)
+                Image(systemName: "minus.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+                    .frame(width: 44, height: 44)
             }
             
             VStack(alignment: .leading, spacing: 12) {

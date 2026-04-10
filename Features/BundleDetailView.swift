@@ -204,9 +204,7 @@ struct BundleDetailView: View {
                         }
                     },
                     onDragStart: { group, index, groups in
-                        // 震动反馈
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         
                         dragItem = group
                         dragTargetIndex = index
@@ -216,14 +214,15 @@ struct BundleDetailView: View {
                     onDragUpdate: { offset, targetIndex in
                         dragOffset = offset
                         if let targetIndex = targetIndex {
+                            if dragTargetIndex != targetIndex {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
                             dragTargetIndex = targetIndex
                         }
                     },
                     onDragEnd: { group, currentIndex, newIndex in
                         if currentIndex != newIndex {
-                            // 位置改变时的震动反馈
-                            let generator = UINotificationFeedbackGenerator()
-                            generator.notificationOccurred(.success)
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
                             
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                 let movedItem = localGroups.remove(at: currentIndex)
@@ -246,28 +245,6 @@ struct BundleDetailView: View {
                 )
             }
         }
-    }
-
-    private func dragOffsetValue(for index: Int) -> CGFloat {
-        guard let dragItem = dragItem,
-              let dragIndex = localGroups.firstIndex(where: { $0.id == dragItem.id }),
-              let targetIndex = dragTargetIndex else {
-            return 0
-        }
-        
-        let rowHeight: CGFloat = 80
-        
-        if dragIndex < targetIndex {
-            if index > dragIndex && index <= targetIndex {
-                return -rowHeight
-            }
-        } else if dragIndex > targetIndex {
-            if index >= targetIndex && index < dragIndex {
-                return rowHeight
-            }
-        }
-        
-        return 0
     }
 }
 
@@ -306,7 +283,7 @@ struct DraggableAccessoryGroupRow: View {
         guard let dragItem = dragItem,
               let dragIndex = localGroups.firstIndex(where: { $0.id == dragItem.id }),
               let targetIndex = dragTargetIndex else { return 0 }
-        let rowHeight: CGFloat = 80
+        let rowHeight: CGFloat = 86
         if dragIndex < targetIndex {
             if index > dragIndex && index <= targetIndex { return -rowHeight }
         } else if dragIndex > targetIndex {
@@ -315,74 +292,66 @@ struct DraggableAccessoryGroupRow: View {
         return 0
     }
     
+    private func calculateNewIndex(translation: CGFloat) -> Int {
+        let rowHeight: CGFloat = 86
+        let currentIndex = localGroups.firstIndex(where: { $0.id == group.id }) ?? 0
+        let moveOffset = Int(round(translation / rowHeight))
+        return max(0, min(localGroups.count - 1, currentIndex + moveOffset))
+    }
+
     var body: some View {
         Group {
             if isEditMode {
-                // 编辑模式：长按放大 + 拖拽排序
-                HStack(spacing: 12) {
-                    Button(action: onDelete) {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.red)
-                    }
-                    .buttonStyle(.plain)
-                    .contentShape(Rectangle())
-                    .frame(width: 44, height: 44)
-                    
-                    AccessoryGroupRow(group: group, isDragging: isDraggingThis || isLongPressed)
-                }
-                .offset(y: isDraggingThis ? dragOffset : rowOffset)
-                .zIndex(dynamicZIndex)
-                .opacity(isDraggingThis ? 0.9 : 1)
-                .scaleEffect(isDraggingThis || isLongPressed ? 1.02 : 1)
-                .shadow(color: isDraggingThis ? .black.opacity(0.2) : .clear, radius: 10)
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragItem != nil)
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragTargetIndex)
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: longPressItem != nil)
-                .contentShape(Rectangle())
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            // 记录开始时间
-                            if pressStartTime == nil {
-                                pressStartTime = Date()
-                                hasTriggeredLongPress = false
-                                
-                                // 延迟检测长按（0.3秒后）
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    if let start = pressStartTime, dragItem == nil {
-                                        let elapsed = Date().timeIntervalSince(start)
-                                        if elapsed >= 0.3 && !hasTriggeredLongPress {
-                                            hasTriggeredLongPress = true
-                                            onLongPress(group)
-                                        }
+                // 编辑模式：使用 UIKit 手势实现长按+拖拽+滚动并存
+                AccessoryGroupRow(group: group, isDragging: isDraggingThis || isLongPressed, isEditMode: isEditMode, onDelete: onDelete)
+                    .offset(y: isDraggingThis ? dragOffset : rowOffset)
+                    .zIndex(dynamicZIndex)
+                    .opacity(isDraggingThis ? 0.9 : 1)
+                    .scaleEffect(isDraggingThis || isLongPressed ? 1.02 : 1)
+                    .shadow(color: isDraggingThis ? .black.opacity(0.2) : .clear, radius: 10)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragItem != nil)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragTargetIndex)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: longPressItem != nil)
+                    .overlay(
+                        GestureHandlingView(
+                            onLongPress: {
+                                if dragItem == nil {
+                                    hasTriggeredLongPress = true
+                                    onLongPress(group)
+                                }
+                            },
+                            onDragChanged: { translation in
+                                if hasTriggeredLongPress || dragItem?.id == group.id {
+                                    if dragItem == nil {
+                                        onDragStart(group, index, localGroups)
+                                    }
+                                    if isDraggingThis {
+                                        let newIndex = calculateNewIndex(translation: translation)
+                                        onDragUpdate(translation, newIndex != dragTargetIndex ? newIndex : nil)
                                     }
                                 }
-                            }
-                            
-                            // 长按后才处理拖拽
-                            if hasTriggeredLongPress || dragItem?.id == group.id {
-                                if dragItem == nil {
-                                    onDragStart(group, index, localGroups)
-                                }
+                            },
+                            onDragEnded: { translation in
                                 if isDraggingThis {
-                                    let newIndex = calculateNewIndex(translation: value.translation.height)
-                                    onDragUpdate(value.translation.height, newIndex != dragTargetIndex ? newIndex : nil)
+                                    let currentIndex = localGroups.firstIndex(where: { $0.id == group.id }) ?? 0
+                                    let newIndex = calculateNewIndex(translation: translation)
+                                    onDragEnd(group, currentIndex, newIndex)
                                 }
+                                hasTriggeredLongPress = false
                             }
+                        )
+                    )
+                    // 删除按钮放在最顶层，确保可点击
+                    .overlay(alignment: .leading) {
+                        Button(action: onDelete) {
+                            Color.clear
                         }
-                        .onEnded { value in
-                            if isDraggingThis {
-                                let currentIndex = localGroups.firstIndex(where: { $0.id == group.id }) ?? 0
-                                let newIndex = calculateNewIndex(translation: value.translation.height)
-                                onDragEnd(group, currentIndex, newIndex)
-                            }
-                            pressStartTime = nil
-                            hasTriggeredLongPress = false
-                        }
-                )
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                        .padding(.leading, 12)
+                    }
             } else {
-                // 非编辑模式：只能点击查看详情
+                // 非编辑模式：只能点击查看详情，ScrollView 正常滚动
                 AccessoryGroupRow(group: group, isDragging: false)
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -391,19 +360,14 @@ struct DraggableAccessoryGroupRow: View {
             }
         }
     }
-    
-    private func calculateNewIndex(translation: CGFloat) -> Int {
-        let rowHeight: CGFloat = 80
-        let currentIndex = localGroups.firstIndex(where: { $0.id == group.id }) ?? 0
-        let moveOffset = Int(round(translation / rowHeight))
-        return max(0, min(localGroups.count - 1, currentIndex + moveOffset))
-    }
 }
 
 // MARK: - Accessory Group Row
 struct AccessoryGroupRow: View {
     let group: BundleAccessoryGroup
     var isDragging: Bool = false
+    var isEditMode: Bool = false
+    var onDelete: () -> Void = {}
     @EnvironmentObject var dataManager: DataManager
 
     private var categoryName: String {
@@ -432,6 +396,14 @@ struct AccessoryGroupRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            // 编辑模式左侧显示删除图标（纯占位，实际点击在最外层overlay）
+            if isEditMode {
+                Image(systemName: "minus.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+                    .frame(width: 44, height: 44)
+            }
+            
             Group {
                 if let image = displayImage {
                     Image(uiImage: image)
@@ -462,9 +434,11 @@ struct AccessoryGroupRow: View {
                     .fontWeight(.semibold)
                     .foregroundStyle(.red)
 
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if !isEditMode {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(12)

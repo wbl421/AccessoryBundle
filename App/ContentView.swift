@@ -1,34 +1,89 @@
 import SwiftUI
 
+// MARK: - Card Frame Preference Key
+struct CardFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [UUID: CGRect] = [:]
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var showingAddCategory = false
     @State private var categoryToEdit: Category?
+    @State private var isEditMode = false
+    @State private var showDeleteAlert = false
+    @State private var categoryToDelete: Category?
+    @State private var selectedCategoryId: UUID?
+    
+    // 拖拽相关
+    @State private var dragItem: Category?
+    @State private var dragOffset: CGSize = .zero
+    @State private var dragTargetIndex: Int?
+    @State private var localCategories: [Category] = []
+    @State private var cardFrames: [UUID: CGRect] = [:]  // 记录每个卡片的屏幕位置
     
     // 判断是否是 iPad
     private var isIPad: Bool {
         UIDevice.current.userInterfaceIdiom == .pad
     }
+    
+    // 震动反馈生成器
+    private let lightFeedback = UIImpactFeedbackGenerator(style: .light)
+    private let mediumFeedback = UIImpactFeedbackGenerator(style: .medium)
 
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                ScrollView {
-                    VStack(spacing: 24) {
-                        headerView
-                        categoryGrid(geometry: geometry)
-                        Spacer(minLength: 40)
-                        accessoryButton
+                let geometryFrame = geometry.frame(in: .global)
+                ZStack {
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            headerView
+                            categoryGrid(geometry: geometry)
+                            Spacer(minLength: 40)
+                            accessoryButton
+                        }
+                        .padding(20)
                     }
-                    .padding(20)
+                    .background(Color(.systemGroupedBackground))
+                    
+                    // 拖动中的卡片渲染在最上层（在ScrollView外）
+                    // 只有当实际开始拖动（有偏移）时才显示 overlay
+                    if let dragItem = dragItem, isEditMode, dragOffset != .zero, let frame = cardFrames[dragItem.id] {
+                        // 使用 GeometryReader 来正确定位
+                        GeometryReader { _ in
+                            DragggingCardView(
+                                category: dragItem,
+                                isIPad: isIPad,
+                                initialFrame: CGRect(
+                                    x: frame.minX - geometryFrame.minX,
+                                    y: frame.minY - geometryFrame.minY,
+                                    width: frame.width,
+                                    height: frame.height
+                                ),
+                                offset: dragOffset,
+                                onDelete: {
+                                    categoryToDelete = dragItem
+                                    showDeleteAlert = true
+                                }
+                            )
+                        }
+                    }
                 }
-                .background(Color(.systemGroupedBackground))
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingAddCategory = true } label: {
-                        Image(systemName: "plus")
+                    HStack(spacing: 16) {
+                        Button { isEditMode.toggle() } label: {
+                            Text(isEditMode ? "完成" : "编辑")
+                                .fontWeight(.medium)
+                        }
+                        Button { showingAddCategory = true } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
@@ -37,6 +92,27 @@ struct ContentView: View {
             }
             .sheet(item: $categoryToEdit) { category in
                 CategoryEditView(category: category)
+            }
+            .alert("确认删除", isPresented: $showDeleteAlert) {
+                Button("取消", role: .cancel) {
+                    categoryToDelete = nil
+                }
+                Button("删除", role: .destructive) {
+                    if let category = categoryToDelete {
+                        dataManager.deleteCategory(category.id)
+                    }
+                    categoryToDelete = nil
+                }
+            } message: {
+                Text("确定要删除「\(categoryToDelete?.name ?? "")」吗？删除后该分类下的套餐也会被删除。")
+            }
+            .onAppear {
+                localCategories = dataManager.categories.sorted { $0.order < $1.order }
+                lightFeedback.prepare()
+                mediumFeedback.prepare()
+            }
+            .onChange(of: dataManager.categories) { _ in
+                localCategories = dataManager.categories.sorted { $0.order < $1.order }
             }
         }
     }
@@ -50,32 +126,205 @@ struct ContentView: View {
     }
 
     private func categoryGrid(geometry: GeometryProxy) -> some View {
-        let columns = isIPad ? 4 : 2  // iPad 显示 4 列，手机 2 列
+        let columns = isIPad ? 4 : 2
         let spacing: CGFloat = 16
+        let cardWidth = (geometry.size.width - 40 - spacing * CGFloat(columns - 1)) / CGFloat(columns)
         
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: columns), spacing: 16) {
-            ForEach(dataManager.categories.sorted { $0.order < $1.order }) { category in
-                NavigationLink(destination: CategoryView(category: category)) {
-                    CategoryCard(category: category, isIPad: isIPad, cardWidth: (geometry.size.width - 40 - spacing * CGFloat(columns - 1)) / CGFloat(columns))
-                }
-                .buttonStyle(.plain)
-                .contextMenu {
-                    Button {
-                        categoryToEdit = category
-                    } label: {
-                        Label("编辑", systemImage: "pencil")
+            ForEach(Array(localCategories.enumerated()), id: \.element.id) { index, category in
+                // 整个卡片容器
+                ZStack(alignment: .topLeading) {
+                    // 卡片主体
+                    ZStack(alignment: .topLeading) {
+                        CategoryCard(
+                            category: category,
+                            isIPad: isIPad,
+                            cardWidth: cardWidth,
+                            isDragging: false,
+                            isEditMode: isEditMode
+                        )
+                        // 编辑模式：删除按钮
+                        if isEditMode {
+                            Button {
+                                categoryToDelete = category
+                                showDeleteAlert = true
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.red)
+                                    .background(Circle().fill(.white).frame(width: 26, height: 26))
+                            }
+                            .buttonStyle(.plain)
+                            .offset(x: -8, y: -8)
+                        }
                     }
-                    Button(role: .destructive) {
-                        dataManager.deleteCategory(category.id)
-                    } label: {
-                        Label("删除", systemImage: "trash")
+                    // 被拖动的卡片：长按后放大，拖动时才透明
+                    .opacity(dragItem?.id == category.id && dragOffset != .zero ? 0.01 : 1)
+                    .scaleEffect(dragItem?.id == category.id ? 1.05 : 1)
+                    .animation(.spring(response: 0.25, dampingFraction: 0.7), value: dragItem?.id)
+                    .zIndex(dragItem?.id == category.id ? 100 : 0)
+                    // 其他卡片让位动画
+                    .offset(
+                        x: dragItem != nil && dragItem?.id != category.id ? offsetForCategory(at: index, cardWidth: cardWidth, spacing: spacing).width : 0,
+                        y: dragItem != nil && dragItem?.id != category.id ? offsetForCategory(at: index, cardWidth: cardWidth, spacing: spacing).height : 0
+                    )
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: dragTargetIndex)
+                    // 编辑模式：拖拽手势覆盖层
+                    .overlay(
+                        Group {
+                            if isEditMode {
+                                GridGestureHandlingView(
+                                    onLongPress: {
+                                        if dragItem == nil {
+                                            mediumFeedback.impactOccurred()
+                                            dragItem = category
+                                            dragTargetIndex = index
+                                        }
+                                    },
+                                    onDragChanged: { translation in
+                                        if dragItem?.id == category.id {
+                                            dragOffset = translation
+                                            let newIndex = calculateNewIndex(for: category, translation: translation, cardWidth: cardWidth, spacing: spacing)
+                                            if newIndex != dragTargetIndex {
+                                                lightFeedback.impactOccurred()
+                                                dragTargetIndex = newIndex
+                                            }
+                                        }
+                                    },
+                                    onDragEnded: { _ in
+                                        if dragItem?.id == category.id, let targetIndex = dragTargetIndex {
+                                            let currentIndex = localCategories.firstIndex(where: { $0.id == category.id }) ?? 0
+                                            
+                                            if currentIndex != targetIndex {
+                                                let generator = UINotificationFeedbackGenerator()
+                                                generator.notificationOccurred(.success)
+                                                
+                                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                                    let movedItem = localCategories.remove(at: currentIndex)
+                                                    localCategories.insert(movedItem, at: targetIndex)
+                                                }
+                                                for (i, cat) in localCategories.enumerated() {
+                                                    var updated = cat
+                                                    updated.order = i
+                                                    dataManager.updateCategory(updated)
+                                                }
+                                            }
+                                        }
+                                        dragItem = nil
+                                        dragOffset = .zero
+                                        dragTargetIndex = nil
+                                    }
+                                )
+                            }
+                        }
+                    )
+                    
+                    // 非编辑模式：NavigationLink 导航
+                    if !isEditMode {
+                        NavigationLink(destination: CategoryView(category: category)) {
+                            EmptyView()
+                        }
+                        .opacity(0)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.clear)
                     }
                 }
-                .onLongPressGesture {
-                    categoryToEdit = category
+                .contentShape(Rectangle())
+                .background(
+                    GeometryReader { cardGeometry in
+                        Color.clear
+                            .onAppear {
+                                cardFrames[category.id] = cardGeometry.frame(in: .global)
+                            }
+                            .onChange(of: cardGeometry.frame(in: .global)) { newFrame in
+                                cardFrames[category.id] = newFrame
+                            }
+                    }
+                )
+                .onTapGesture {
+                    if !isEditMode {
+                        selectedCategoryId = category.id
+                    }
                 }
+                // 导航
+                .background(
+                    NavigationLink(
+                        destination: CategoryView(category: category),
+                        tag: category.id,
+                        selection: $selectedCategoryId
+                    ) {
+                        EmptyView()
+                    }
+                    .hidden()
+                )
             }
         }
+    }
+    
+    // 计算其他卡片的偏移量（让位动画）
+    private func offsetForCategory(at index: Int, cardWidth: CGFloat, spacing: CGFloat) -> CGSize {
+        guard let dragItem = dragItem,
+              let dragIndex = localCategories.firstIndex(where: { $0.id == dragItem.id }),
+              let targetIndex = dragTargetIndex else { return .zero }
+        
+        if dragIndex == targetIndex { return .zero }
+        
+        let columns = isIPad ? 4 : 2
+        let cardHeight: CGFloat = isIPad ? 150 : 130
+        
+        // 向后拖动：dragIndex < targetIndex
+        if dragIndex < targetIndex {
+            if index > dragIndex && index <= targetIndex {
+                // 这里的卡片需要往前移一位
+                let srcRow = index / columns
+                let srcCol = index % columns
+                let dstIndex = index - 1
+                let dstRow = dstIndex / columns
+                let dstCol = dstIndex % columns
+                let dx = CGFloat(dstCol - srcCol) * (cardWidth + spacing)
+                let dy = CGFloat(dstRow - srcRow) * (cardHeight + spacing)
+                return CGSize(width: dx, height: dy)
+            }
+        }
+        // 向前拖动：dragIndex > targetIndex
+        else if dragIndex > targetIndex {
+            if index >= targetIndex && index < dragIndex {
+                // 这里的卡片需要往后移一位
+                let srcRow = index / columns
+                let srcCol = index % columns
+                let dstIndex = index + 1
+                let dstRow = dstIndex / columns
+                let dstCol = dstIndex % columns
+                let dx = CGFloat(dstCol - srcCol) * (cardWidth + spacing)
+                let dy = CGFloat(dstRow - srcRow) * (cardHeight + spacing)
+                return CGSize(width: dx, height: dy)
+            }
+        }
+        return .zero
+    }
+    
+    // 根据拖拽偏移计算目标索引（支持斜向拖动）
+    private func calculateNewIndex(for category: Category, translation: CGSize, cardWidth: CGFloat, spacing: CGFloat) -> Int {
+        let currentIndex = localCategories.firstIndex(where: { $0.id == category.id }) ?? 0
+        let columns = isIPad ? 4 : 2
+        let cardHeight: CGFloat = isIPad ? 150 : 130
+        
+        let colOffset = Int(round(translation.width / (cardWidth + spacing)))
+        let rowOffset = Int(round(translation.height / (cardHeight + spacing)))
+        
+        let currentRow = currentIndex / columns
+        let currentCol = currentIndex % columns
+        
+        let newRow = currentRow + rowOffset
+        let newCol = currentCol + colOffset
+        
+        // 确保在有效范围内
+        guard newRow >= 0 && newCol >= 0 && newCol < columns else { return currentIndex }
+        
+        var newIndex = newRow * columns + newCol
+        newIndex = max(0, min(localCategories.count - 1, newIndex))
+        
+        return newIndex
     }
 
     private var accessoryButton: some View {
@@ -99,6 +348,8 @@ struct CategoryCard: View {
     let category: Category
     var isIPad: Bool = false
     var cardWidth: CGFloat = 0
+    var isDragging: Bool = false
+    var isEditMode: Bool = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -111,14 +362,60 @@ struct CategoryCard: View {
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
         }
-        .frame(width: cardWidth > 0 ? cardWidth : nil, height: isIPad ? 130 : 110)
+        .frame(width: cardWidth > 0 ? cardWidth : nil, height: isIPad ? 150 : 130)
         .frame(maxWidth: cardWidth > 0 ? cardWidth : .infinity)
         .background(
             LinearGradient(colors: [category.color, category.color.opacity(0.7)],
                           startPoint: .topLeading, endPoint: .bottomTrailing)
         )
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: category.color.opacity(0.3), radius: 8, x: 0, y: 4)
+        .shadow(color: isDragging ? category.color.opacity(0.5) : category.color.opacity(0.3), radius: isDragging ? 12 : 8, x: 0, y: isDragging ? 6 : 4)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Dragging Card View (拖动中的卡片)
+struct DragggingCardView: View {
+    let category: Category
+    let isIPad: Bool
+    let initialFrame: CGRect
+    let offset: CGSize
+    let onDelete: () -> Void
+    
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            // 卡片
+            VStack(spacing: 12) {
+                Image(systemName: category.icon)
+                    .font(.system(size: isIPad ? 48 : 40))
+                    .foregroundStyle(.white)
+                
+                Text(category.name)
+                    .font(isIPad ? .title3 : .headline)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+            }
+            .frame(width: initialFrame.width, height: initialFrame.height)
+            .background(
+                LinearGradient(colors: [category.color, category.color.opacity(0.7)],
+                              startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 6)
+            .scaleEffect(1.05)
+            
+            // 删除按钮
+            Button(action: onDelete) {
+                Image(systemName: "minus.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+                    .background(Circle().fill(.white).frame(width: 26, height: 26))
+            }
+            .buttonStyle(.plain)
+            .offset(x: -8, y: -8)
+        }
+        // 使用 position 定位到全局坐标位置
+        .position(x: initialFrame.midX + offset.width, y: initialFrame.midY + offset.height)
     }
 }
 
@@ -291,6 +588,139 @@ extension Color {
         } else {
             return nil
         }
+    }
+}
+
+// MARK: - Grid Gesture Handling View (UIKit) - 支持斜向拖动
+struct GridGestureHandlingView: UIViewRepresentable {
+    let onLongPress: () -> Void
+    let onDragChanged: (CGSize) -> Void
+    let onDragEnded: (CGSize) -> Void
+    
+    func makeUIView(context: Context) -> UIView {
+        let view = GridGestureCoordinatorView()
+        view.backgroundColor = .clear
+        
+        let longPressRecognizer = UILongPressGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleLongPress(_:))
+        )
+        longPressRecognizer.minimumPressDuration = 0.3
+        longPressRecognizer.allowableMovement = 100
+        longPressRecognizer.delaysTouchesBegan = false
+        longPressRecognizer.cancelsTouchesInView = true
+        view.addGestureRecognizer(longPressRecognizer)
+        context.coordinator.longPressRecognizer = longPressRecognizer
+        
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.onLongPress = onLongPress
+        context.coordinator.onDragChanged = onDragChanged
+        context.coordinator.onDragEnded = onDragEnded
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            onLongPress: onLongPress,
+            onDragChanged: onDragChanged,
+            onDragEnded: onDragEnded
+        )
+    }
+    
+    class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onLongPress: () -> Void
+        var onDragChanged: (CGSize) -> Void
+        var onDragEnded: (CGSize) -> Void
+        
+        var longPressRecognizer: UILongPressGestureRecognizer?
+        private var hasTriggeredLongPress = false
+        private var startTouchPoint: CGPoint = .zero
+        
+        init(onLongPress: @escaping () -> Void,
+             onDragChanged: @escaping (CGSize) -> Void,
+             onDragEnded: @escaping (CGSize) -> Void) {
+            self.onLongPress = onLongPress
+            self.onDragChanged = onDragChanged
+            self.onDragEnded = onDragEnded
+            super.init()
+        }
+        
+        @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+            switch recognizer.state {
+            case .began:
+                hasTriggeredLongPress = true
+                startTouchPoint = recognizer.location(in: recognizer.view?.superview)
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                onLongPress()
+                
+            case .changed:
+                if hasTriggeredLongPress {
+                    let currentPoint = recognizer.location(in: recognizer.view?.superview)
+                    let translation = CGSize(
+                        width: currentPoint.x - startTouchPoint.x,
+                        height: currentPoint.y - startTouchPoint.y
+                    )
+                    onDragChanged(translation)
+                }
+                
+            case .ended, .cancelled:
+                if hasTriggeredLongPress {
+                    let currentPoint = recognizer.location(in: recognizer.view?.superview)
+                    let translation = CGSize(
+                        width: currentPoint.x - startTouchPoint.x,
+                        height: currentPoint.y - startTouchPoint.y
+                    )
+                    onDragEnded(translation)
+                }
+                hasTriggeredLongPress = false
+                
+            default:
+                break
+            }
+        }
+        
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                              shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            return !hasTriggeredLongPress
+        }
+        
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                              shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            return false
+        }
+        
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                              shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            return hasTriggeredLongPress
+        }
+        
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                              shouldReceive touch: UITouch) -> Bool {
+            return true
+        }
+    }
+}
+
+class GridGestureCoordinatorView: UIView {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        backgroundColor = .clear
+    }
+    
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        return bounds.contains(point) ? self : nil
+    }
+    
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        return bounds.contains(point)
     }
 }
 

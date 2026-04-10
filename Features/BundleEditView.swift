@@ -11,6 +11,7 @@ struct BundleEditView: View {
     @State private var selectedItems: [BundleAccessoryItem] = []
     @State private var showingAccessoryPicker = false
     @State private var showingDeleteAlert = false
+    @State private var expandedCategories: Set<UUID?> = []
     @FocusState private var focusedField: Field?
     
     private enum Field: Int, Hashable {
@@ -53,30 +54,23 @@ struct BundleEditView: View {
                         .focused($focusedField, equals: .price)
                 }
                 
-                // 已添加配件 - 按分类横向显示
-                ForEach(groupedItems, id: \.category?.id) { group in
-                    VStack(alignment: .leading, spacing: 8) {
-                        // 分类名称
-                        Text(group.category?.name ?? "未分类")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                // 已添加配件 - 按分类折叠显示
+                Section {
+                    if selectedItems.isEmpty {
+                        Text("暂无配件")
                             .foregroundStyle(.secondary)
-                            .padding(.leading, 16)
-                            .padding(.top, 8)
-                        
-                        // 配件横向滚动
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(group.items) { item in
-                                    accessoryItemCard(item)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 8)
+                            .font(.subheadline)
+                    } else {
+                        ForEach(groupedItems, id: \.category?.id) { category, items in
+                            categorySection(category: category, items: items)
                         }
                     }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+                } header: {
+                    Text("已添加配件")
+                } footer: {
+                    if !selectedItems.isEmpty {
+                        Text("共\(selectedItems.count)件配件，\(groupedItems.count)个分类")
+                    }
                 }
 
                 Section {
@@ -85,11 +79,6 @@ struct BundleEditView: View {
                             Image(systemName: "plus.circle.fill")
                             Text("添加配件")
                         }
-                        .foregroundStyle(.blue)
-                    }
-                } footer: {
-                    if !selectedItems.isEmpty {
-                        Text("共\(selectedItems.count)件配件")
                     }
                 }
 
@@ -104,13 +93,6 @@ struct BundleEditView: View {
                         }
                     }
                 }
-                
-                // 底部预留空间，防止键盘遮挡
-                Section {
-                    Color.clear
-                        .frame(height: 400)
-                }
-                .listRowBackground(Color.clear)
             }
             .navigationTitle(isEditing ? "编辑套餐" : "新建套餐")
             .navigationBarTitleDisplayMode(.inline)
@@ -144,9 +126,42 @@ struct BundleEditView: View {
         }
     }
 
-    private func accessoryItemCard(_ item: BundleAccessoryItem) -> some View {
+    private func categorySection(category: AccessoryCategory?, items: [BundleAccessoryItem]) -> some View {
+        let catId = category?.id as UUID?
+        let isExpanded = expandedCategories.contains(catId)
+        
+        return DisclosureGroup(isExpanded: Binding(
+            get: { isExpanded },
+            set: { expanding in
+                if expanding {
+                    expandedCategories.insert(catId)
+                } else {
+                    expandedCategories.remove(catId)
+                }
+            }
+        )) {
+            ForEach(items) { item in
+                accessoryItemRow(item)
+            }
+            .onDelete { offsets in
+                let idsToRemove = offsets.map { items[$0].id }
+                selectedItems.removeAll { idsToRemove.contains($0.id) }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Text(category?.name ?? "未分类")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Text("(\(items.count))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func accessoryItemRow(_ item: BundleAccessoryItem) -> some View {
         let accessory = dataManager.accessories.first { $0.id == item.accessoryId }
-        return HStack(spacing: 10) {
+        return HStack(spacing: 12) {
             Group {
                 if let imagePath = item.customImagePath ?? accessory?.imagePath,
                    let image = ImageStorage.shared.loadImage(filename: imagePath) {
@@ -155,7 +170,7 @@ struct BundleEditView: View {
                         .scaledToFill()
                 } else {
                     Image(systemName: "photo")
-                        .font(.title2)
+                        .font(.title3)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -163,32 +178,21 @@ struct BundleEditView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .background(Color.gray.opacity(0.1))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(item.customName ?? accessory?.name ?? "未知配件")
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.medium)
-                    .lineLimit(1)
                 Text("¥\(item.customPrice ?? accessory?.price ?? 0)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             
-            Spacer(minLength: 0)
-            
-            // 删除按钮
-            Button {
-                removeItem(item)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(.gray.opacity(0.6))
-            }
+            Spacer()
         }
-        .padding(10)
-        .frame(width: 200)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+    }
+    
+    private func removeItemsAtOffsets(at offsets: IndexSet) {
+        selectedItems.remove(atOffsets: offsets)
     }
 
     private func loadData() {
@@ -279,11 +283,7 @@ struct AccessoryPickerSheet: View {
     private func isAdded(_ accessory: Accessory) -> Bool {
         addedAccessoryIds.contains(accessory.id) || selectedItems.contains { $0.accessoryId == accessory.id }
     }
-    
-    private func quantityFor(_ accessory: Accessory) -> Int {
-        selectedItems.filter { $0.accessoryId == accessory.id }.count
-    }
-    
+
     // 检查当前筛选的配件是否全部已选
     private var isAllFilteredSelected: Bool {
         !filteredAccessories.isEmpty && filteredAccessories.allSatisfy { isAdded($0) }
@@ -344,7 +344,7 @@ struct AccessoryPickerSheet: View {
                 List {
                     ForEach(filteredAccessories) { accessory in
                         Button {
-                            addAccessory(accessory)
+                            toggleAccessory(accessory)
                         } label: {
                             HStack {
                                 Group {
@@ -376,20 +376,11 @@ struct AccessoryPickerSheet: View {
 
                                 Spacer()
                                 
-                                // 添加状态显示
+                                // 选中/未选中状态
                                 if isAdded(accessory) {
-                                    let qty = quantityFor(accessory)
-                                    HStack(spacing: 6) {
-                                        if qty > 1 {
-                                            Text("x\(qty)")
-                                                .font(.caption)
-                                                .fontWeight(.medium)
-                                                .foregroundStyle(.green)
-                                        }
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.title2)
-                                            .foregroundStyle(.green)
-                                    }
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.green)
                                 } else {
                                     Image(systemName: "plus.circle")
                                         .font(.title2)
@@ -425,16 +416,23 @@ struct AccessoryPickerSheet: View {
         }
     }
 
-    private func addAccessory(_ accessory: Accessory) {
-        let newItem = BundleAccessoryItem(
-            bundleId: UUID(),
-            accessoryId: accessory.id,
-            quantity: 1,
-            order: selectedItems.count
-        )
+    private func toggleAccessory(_ accessory: Accessory) {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            selectedItems.append(newItem)
-            addedAccessoryIds.insert(accessory.id)
+            if isAdded(accessory) {
+                // 已选中 → 取消选中
+                selectedItems.removeAll { $0.accessoryId == accessory.id }
+                addedAccessoryIds.remove(accessory.id)
+            } else {
+                // 未选中 → 选中
+                let newItem = BundleAccessoryItem(
+                    bundleId: UUID(),
+                    accessoryId: accessory.id,
+                    quantity: 1,
+                    order: selectedItems.count
+                )
+                selectedItems.append(newItem)
+                addedAccessoryIds.insert(accessory.id)
+            }
         }
     }
 }
