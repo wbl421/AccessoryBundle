@@ -40,21 +40,21 @@ struct ParsedImportResult: Identifiable {
 
 class ExcelParser {
 
-    // 模板列定义（12列：3缩略图 + 4文字 + 5详情图）
-    private let headerNames = ["缩略图1", "缩略图2", "缩略图3", "商品名称", "商品价格", "商品分类", "商品详情", "详情图1", "详情图2", "详情图3", "详情图4", "详情图5"]
+    // 模板列定义（14列：5缩略图 + 4文字 + 5详情图）
+    private let headerNames = ["缩略图1", "缩略图2", "缩略图3", "缩略图4", "缩略图5", "商品名称", "商品价格", "商品分类", "商品详情", "详情图1", "详情图2", "详情图3", "详情图4", "详情图5"]
 
-    // 图片列索引 (0-2 缩略图, 7-11 详情图)
-    private let thumbnailColumns = [0, 1, 2]
-    private let detailImageColumns = [7, 8, 9, 10, 11]
+    // 图片列索引 (0-4 缩略图, 9-13 详情图)
+    private let thumbnailColumns = [0, 1, 2, 3, 4]
+    private let detailImageColumns = [9, 10, 11, 12, 13]
 
     // 文字列索引
-    private let nameColumn = 3
-    private let priceColumn = 4
-    private let categoryColumn = 5
-    private let descriptionColumn = 6
+    private let nameColumn = 5
+    private let priceColumn = 6
+    private let categoryColumn = 7
+    private let descriptionColumn = 8
 
     // 列数
-    private let columnCount = 12
+    private let columnCount = 14
 
     /// 解析 xlsx 文件
     func parseXLSX(at url: URL, existingCategories: [AccessoryCategory]) -> ParsedImportResult {
