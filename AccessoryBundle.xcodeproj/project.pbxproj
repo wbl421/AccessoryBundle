@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13,29 +13,51 @@
 		383A12EA368CA1DA734FC3DD /* BundleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84BA740192B4FE52F62CEE1D /* BundleDetailView.swift */; };
 		3B085B0BD48DA389660600E1 /* Bundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F98B83B596041819256FD25 /* Bundle.swift */; };
 		3FA46B97B5BFB12100C2071F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24E914A1D4DBAC8E3560F201 /* Assets.xcassets */; };
+		5020D5078238923F1FAEEB21 /* TemplateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63F0704919CB041BAA54FE7 /* TemplateManager.swift */; };
 		584848CFEC083C8ADD0CB801 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF12FD6E77D29B3CA9B83DBD /* ContentView.swift */; };
+		6868E8567238821A000004EF /* ExcelParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C360C817BC12522225D06262 /* ExcelParser.swift */; };
 		87828961AE279EDF4CD9183A /* CategoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD694494B1E5088B6CB58D4A /* CategoryView.swift */; };
+		99DEBD017593FD9858FF6615 /* CoreXLSX in Frameworks */ = {isa = PBXBuildFile; productRef = F5864AA1785EBF6A7DFF712F /* CoreXLSX */; };
+		9DF009588B2052C0C06EB631 /* import_template.xlsx in Resources */ = {isa = PBXBuildFile; fileRef = BCAF40826BC376EB7D2F8F14 /* import_template.xlsx */; };
 		A3003F9F7447329793C739F4 /* Category.swift in Sources */ = {isa = PBXBuildFile; fileRef = B260823288E45C7FD6932510 /* Category.swift */; };
-		AABB0001B5BFB12100C2071F /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB1001D4DBAC8E3560F201 /* OnboardingManager.swift */; };
 		B10C388BA3B0B5094B0EF62F /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF92A8241D027211EAE0BFBB /* DataManager.swift */; };
+		DFECB3CC1C7D3744911482E5 /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 774428C5475341CA85E35728 /* OnboardingManager.swift */; };
 		E44BCDBAEA2539D143A7EA3C /* AccessoryBundleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AF530CB2D14DAAE1DA1189 /* AccessoryBundleApp.swift */; };
+		EF284E928BB3264F8A0451DF /* DocumentPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B49F82F54ECFA4477B1A72 /* DocumentPickerView.swift */; };
+		F1B72ADEB85D020CB26398D4 /* ImportPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F2BF13025FF25392E09603D /* ImportPreviewView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1CAD69BD39548C28597C3458 /* Accessory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accessory.swift; sourceTree = "<group>"; };
+		1F2BF13025FF25392E09603D /* ImportPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPreviewView.swift; sourceTree = "<group>"; };
 		24E914A1D4DBAC8E3560F201 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4680F960FA57A2E5E045CF7C /* BundleEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleEditView.swift; sourceTree = "<group>"; };
-		6A86424B3B780C66B5E44193 /* AccessoryBundle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AccessoryBundle.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6A86424B3B780C66B5E44193 /* AccessoryBundle.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AccessoryBundle.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		774428C5475341CA85E35728 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		84BA740192B4FE52F62CEE1D /* BundleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleDetailView.swift; sourceTree = "<group>"; };
 		8F98B83B596041819256FD25 /* Bundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bundle.swift; sourceTree = "<group>"; };
-		AABB1001D4DBAC8E3560F201 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
+		A63F0704919CB041BAA54FE7 /* TemplateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateManager.swift; sourceTree = "<group>"; };
 		AD694494B1E5088B6CB58D4A /* CategoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryView.swift; sourceTree = "<group>"; };
 		AF12FD6E77D29B3CA9B83DBD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B260823288E45C7FD6932510 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
 		B546D188AEFB7320033546B6 /* AccessoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessoryListView.swift; sourceTree = "<group>"; };
+		BCAF40826BC376EB7D2F8F14 /* import_template.xlsx */ = {isa = PBXFileReference; path = import_template.xlsx; sourceTree = "<group>"; };
+		C360C817BC12522225D06262 /* ExcelParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcelParser.swift; sourceTree = "<group>"; };
+		D9B49F82F54ECFA4477B1A72 /* DocumentPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPickerView.swift; sourceTree = "<group>"; };
 		E2AF530CB2D14DAAE1DA1189 /* AccessoryBundleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessoryBundleApp.swift; sourceTree = "<group>"; };
 		EF92A8241D027211EAE0BFBB /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		33FE29EA8C50615C8F08B4EE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				99DEBD017593FD9858FF6615 /* CoreXLSX in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		54D24EBD7DD80A50859CC408 /* Models */ = {
@@ -63,6 +85,7 @@
 			isa = PBXGroup;
 			children = (
 				24E914A1D4DBAC8E3560F201 /* Assets.xcassets */,
+				BCAF40826BC376EB7D2F8F14 /* import_template.xlsx */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -75,7 +98,8 @@
 				4680F960FA57A2E5E045CF7C /* BundleEditView.swift */,
 				AD694494B1E5088B6CB58D4A /* CategoryView.swift */,
 				EF92A8241D027211EAE0BFBB /* DataManager.swift */,
-				AABB1001D4DBAC8E3560F201 /* OnboardingManager.swift */,
+				774428C5475341CA85E35728 /* OnboardingManager.swift */,
+				F75C93CAFA4CF139F8BC4926 /* BatchImport */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -97,6 +121,17 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		F75C93CAFA4CF139F8BC4926 /* BatchImport */ = {
+			isa = PBXGroup;
+			children = (
+				D9B49F82F54ECFA4477B1A72 /* DocumentPickerView.swift */,
+				C360C817BC12522225D06262 /* ExcelParser.swift */,
+				1F2BF13025FF25392E09603D /* ImportPreviewView.swift */,
+				A63F0704919CB041BAA54FE7 /* TemplateManager.swift */,
+			);
+			path = BatchImport;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -106,6 +141,7 @@
 			buildPhases = (
 				98D18D325370104CD10903DB /* Sources */,
 				A0A253B646F2538D233A295C /* Resources */,
+				33FE29EA8C50615C8F08B4EE /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -113,6 +149,7 @@
 			);
 			name = AccessoryBundle;
 			packageProductDependencies = (
+				F5864AA1785EBF6A7DFF712F /* CoreXLSX */,
 			);
 			productName = AccessoryBundle;
 			productReference = 6A86424B3B780C66B5E44193 /* AccessoryBundle.app */;
@@ -125,9 +162,10 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					5824FB0AD8CE410AE71ABC31 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -142,6 +180,10 @@
 			);
 			mainGroup = 79C83581E2C88FB0C6F7B9A8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				FB4C813666DA8A573CC8A1AB /* XCRemoteSwiftPackageReference "CoreXLSX" */,
+			);
+			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -156,6 +198,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3FA46B97B5BFB12100C2071F /* Assets.xcassets in Resources */,
+				9DF009588B2052C0C06EB631 /* import_template.xlsx in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -176,7 +219,11 @@
 				87828961AE279EDF4CD9183A /* CategoryView.swift in Sources */,
 				584848CFEC083C8ADD0CB801 /* ContentView.swift in Sources */,
 				B10C388BA3B0B5094B0EF62F /* DataManager.swift in Sources */,
-				AABB0001B5BFB12100C2071F /* OnboardingManager.swift in Sources */,
+				EF284E928BB3264F8A0451DF /* DocumentPickerView.swift in Sources */,
+				6868E8567238821A000004EF /* ExcelParser.swift in Sources */,
+				F1B72ADEB85D020CB26398D4 /* ImportPreviewView.swift in Sources */,
+				DFECB3CC1C7D3744911482E5 /* OnboardingManager.swift in Sources */,
+				5020D5078238923F1FAEEB21 /* TemplateManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -218,10 +265,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 6CXPAAH6HA;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -242,7 +287,6 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -284,10 +328,8 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 6CXPAAH6HA;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -301,7 +343,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
@@ -315,6 +356,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -334,6 +376,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -368,6 +411,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FB4C813666DA8A573CC8A1AB /* XCRemoteSwiftPackageReference "CoreXLSX" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/CoreOffice/CoreXLSX";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.14.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F5864AA1785EBF6A7DFF712F /* CoreXLSX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB4C813666DA8A573CC8A1AB /* XCRemoteSwiftPackageReference "CoreXLSX" */;
+			productName = CoreXLSX;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C9CBDB9F3CFA7A2C71588421 /* Project object */;
 }

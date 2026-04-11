@@ -325,4 +325,73 @@ class DataManager: ObservableObject {
         }
         save()
     }
+
+    // MARK: - 批量导入
+    func batchImportAccessories(parsed: [ParsedAccessory], newCategoryNames: [String]) -> Int {
+        // 创建新分类
+        var categoryMap: [String: UUID] = [:]
+        // 已有分类映射
+        for cat in accessoryCategories {
+            categoryMap[cat.name.lowercased().trimmingCharacters(in: .whitespaces)] = cat.id
+        }
+        // 新建分类
+        let maxCatOrder = accessoryCategories.map(\.order).max() ?? -1
+        for (index, name) in newCategoryNames.enumerated() {
+            let newCat = AccessoryCategory(
+                id: UUID(),
+                name: name,
+                icon: "folder.fill",
+                order: maxCatOrder + index + 1
+            )
+            accessoryCategories.append(newCat)
+            categoryMap[name.lowercased().trimmingCharacters(in: .whitespaces)] = newCat.id
+        }
+
+        // 导入配件
+        let maxOrder = accessories.map(\.order).max() ?? -1
+        var importedCount = 0
+
+        for (index, parsedAccessory) in parsed.enumerated() {
+            // 保存缩略图
+            var thumbnailPaths: [String] = []
+            for image in parsedAccessory.thumbnailImages {
+                let imageId = UUID()
+                if let path = ImageStorage.shared.saveImage(image, for: imageId) {
+                    thumbnailPaths.append(path)
+                }
+            }
+
+            // 保存详情图
+            var detailImagePaths: [String] = []
+            for image in parsedAccessory.detailImages {
+                let imageId = UUID()
+                if let path = ImageStorage.shared.saveImage(image, for: imageId) {
+                    detailImagePaths.append(path)
+                }
+            }
+
+            // 确定分类ID
+            var categoryId: UUID? = nil
+            if let catName = parsedAccessory.categoryName {
+                categoryId = categoryMap[catName.lowercased().trimmingCharacters(in: .whitespaces)]
+            }
+
+            let accessory = Accessory(
+                id: UUID(),
+                name: parsedAccessory.name,
+                categoryId: categoryId,
+                price: parsedAccessory.price,
+                imagePaths: thumbnailPaths.isEmpty ? nil : thumbnailPaths,
+                description: parsedAccessory.description,
+                detailImages: detailImagePaths.isEmpty ? nil : detailImagePaths,
+                order: maxOrder + index + 1
+            )
+            accessories.append(accessory)
+            importedCount += 1
+        }
+
+        // 统一保存一次
+        save()
+        return importedCount
+    }
 }

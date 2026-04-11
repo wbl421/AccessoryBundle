@@ -17,6 +17,8 @@ targets:
       - Models
       - Features
       - Resources
+    dependencies:
+      - package: CoreXLSX
     info:
       path: Info.plist
     settings:
@@ -27,3 +29,8 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ""
+
+packages:
+  CoreXLSX:
+    url: https://github.com/CoreOffice/CoreXLSX
+    from: "0.14.0"
