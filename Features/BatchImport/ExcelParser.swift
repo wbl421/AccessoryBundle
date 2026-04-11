@@ -482,10 +482,11 @@ class ExcelParser {
                             if let idRange = Range(match.range(at: 1), in: xmlStr),
                                let targetRange = Range(match.range(at: 2), in: xmlStr) {
                                 let id = String(xmlStr[idRange])
-                                var target = String(xmlStr[targetRange])
-                                if target.hasPrefix("/") { target = String(target.dropFirst()) }
-                                if !target.hasPrefix("xl/") { target = "xl/drawings/" + target }
-                                imageRels[id] = target
+                                let rawTarget = String(xmlStr[targetRange])
+                                // 解析相对路径：drawing rels 在 xl/drawings/_rels/，
+                                // Target 如 "../media/image1.png" 相对于 xl/drawings/，即 xl/media/image1.png
+                                let resolvedPath = resolveRelativePath(rawTarget, basePath: "xl/drawings/")
+                                imageRels[id] = resolvedPath
                             }
                         }
                     }
@@ -603,5 +604,25 @@ class ExcelParser {
         guard let openRange = xml.range(of: openTag, options: []),
               let closeRange = xml.range(of: closeTag, options: []) else { return nil }
         return String(xml[openRange.upperBound..<closeRange.lowerBound])
+    }
+
+    /// 解析相对路径，如 "../media/image1.png" 相对于 "xl/drawings/" → "xl/media/image1.png"
+    private func resolveRelativePath(_ path: String, basePath: String) -> String {
+        // 绝对路径（以 / 开头）
+        if path.hasPrefix("/") {
+            return String(path.dropFirst())
+        }
+        // 拼接基路径
+        var components = (basePath + path).split(separator: "/").map(String.init)
+        // 处理 ".." 和 "."
+        var resolved: [String] = []
+        for comp in components {
+            if comp == ".." {
+                if !resolved.isEmpty { resolved.removeLast() }
+            } else if comp != "." && !comp.isEmpty {
+                resolved.append(comp)
+            }
+        }
+        return resolved.joined(separator: "/")
     }
 }
