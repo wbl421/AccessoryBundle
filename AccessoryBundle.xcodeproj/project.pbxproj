@@ -16,6 +16,7 @@
 		584848CFEC083C8ADD0CB801 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF12FD6E77D29B3CA9B83DBD /* ContentView.swift */; };
 		87828961AE279EDF4CD9183A /* CategoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD694494B1E5088B6CB58D4A /* CategoryView.swift */; };
 		A3003F9F7447329793C739F4 /* Category.swift in Sources */ = {isa = PBXBuildFile; fileRef = B260823288E45C7FD6932510 /* Category.swift */; };
+		AABB0001B5BFB12100C2071F /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB1001D4DBAC8E3560F201 /* OnboardingManager.swift */; };
 		B10C388BA3B0B5094B0EF62F /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF92A8241D027211EAE0BFBB /* DataManager.swift */; };
 		E44BCDBAEA2539D143A7EA3C /* AccessoryBundleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AF530CB2D14DAAE1DA1189 /* AccessoryBundleApp.swift */; };
 /* End PBXBuildFile section */
@@ -27,6 +28,7 @@
 		6A86424B3B780C66B5E44193 /* AccessoryBundle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AccessoryBundle.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		84BA740192B4FE52F62CEE1D /* BundleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleDetailView.swift; sourceTree = "<group>"; };
 		8F98B83B596041819256FD25 /* Bundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bundle.swift; sourceTree = "<group>"; };
+		AABB1001D4DBAC8E3560F201 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		AD694494B1E5088B6CB58D4A /* CategoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryView.swift; sourceTree = "<group>"; };
 		AF12FD6E77D29B3CA9B83DBD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B260823288E45C7FD6932510 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
@@ -73,6 +75,7 @@
 				4680F960FA57A2E5E045CF7C /* BundleEditView.swift */,
 				AD694494B1E5088B6CB58D4A /* CategoryView.swift */,
 				EF92A8241D027211EAE0BFBB /* DataManager.swift */,
+				AABB1001D4DBAC8E3560F201 /* OnboardingManager.swift */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -122,7 +125,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					5824FB0AD8CE410AE71ABC31 = {
 						ProvisioningStyle = Automatic;
@@ -173,6 +176,7 @@
 				87828961AE279EDF4CD9183A /* CategoryView.swift in Sources */,
 				584848CFEC083C8ADD0CB801 /* ContentView.swift in Sources */,
 				B10C388BA3B0B5094B0EF62F /* DataManager.swift in Sources */,
+				AABB0001B5BFB12100C2071F /* OnboardingManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -214,8 +218,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 6CXPAAH6HA;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -236,6 +242,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -277,8 +284,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 6CXPAAH6HA;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -292,6 +301,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
@@ -305,7 +315,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 6CXPAAH6HA;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -325,7 +334,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 6CXPAAH6HA;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

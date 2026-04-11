@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 // MARK: - Card Frame Preference Key
 struct CardFramePreferenceKey: PreferenceKey {
@@ -10,18 +11,23 @@ struct CardFramePreferenceKey: PreferenceKey {
 
 struct ContentView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var onboardingManager: OnboardingManager
     @State private var showingAddCategory = false
     @State private var categoryToEdit: Category?
     @State private var isEditMode = false
     @State private var showDeleteAlert = false
     @State private var categoryToDelete: Category?
-    
+
     // 拖拽相关
     @State private var dragItem: Category?
     @State private var dragOffset: CGSize = .zero
     @State private var dragTargetIndex: Int?
     @State private var localCategories: [Category] = []
     @State private var cardFrames: [UUID: CGRect] = [:]  // 记录每个卡片的屏幕位置
+
+    // 提示相关
+    @State private var showWelcomeTip: Bool = false
+    @State private var showAccessoryTip: Bool = false
     
     // 判断是否是 iPad
     private var isIPad: Bool {
@@ -41,16 +47,62 @@ struct ContentView: View {
                         ScrollView {
                             VStack(spacing: 24) {
                                 headerView
+
+                                // 欢迎提示卡片
+                                if showWelcomeTip {
+                                    welcomeTipCard
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
+                                }
+
                                 categoryGrid(geometry: geometry)
                             }
                             .padding(20)
                         }
                         .background(Color(.systemGroupedBackground))
-                        
-                        accessoryButton
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(Color(.systemGroupedBackground))
+
+                        ZStack(alignment: .top) {
+                            accessoryButton
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                .background(Color(.systemGroupedBackground))
+
+                            // 配件管理气泡提示
+                            if showAccessoryTip {
+                                VStack(spacing: 0) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "lightbulb.fill")
+                                            .foregroundStyle(.orange)
+                                        Text("点击这里管理所有配件商品")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.primary)
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(.systemBackground))
+                                            .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 2)
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                                    )
+                                    // 小三角
+                                    Triangle()
+                                        .fill(Color(.systemBackground))
+                                        .frame(width: 14, height: 8)
+                                        .offset(y: -1)
+                                }
+                                .padding(.top, -50)
+                                .transition(.opacity)
+                                .onTapGesture {
+                                    withAnimation(.easeOut(duration: 0.3)) {
+                                        showAccessoryTip = false
+                                    }
+                                    onboardingManager.completeTooltips()
+                                }
+                            }
+                        }
                     }
                     
                     // 拖动中的卡片渲染在最上层（在ScrollView外）
@@ -114,6 +166,12 @@ struct ContentView: View {
                 localCategories = dataManager.categories.sorted { $0.order < $1.order }
                 lightFeedback.prepare()
                 mediumFeedback.prepare()
+                // 首次启动显示提示
+                if !onboardingManager.areTooltipsComplete {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showWelcomeTip = true
+                    }
+                }
             }
             .onChange(of: dataManager.categories) { _ in
                 localCategories = dataManager.categories.sorted { $0.order < $1.order }
@@ -130,6 +188,78 @@ struct ContentView: View {
             .fontWeight(.bold)
             .foregroundStyle(.primary)
             .padding(.top, 8)
+    }
+
+    // 欢迎提示卡片
+    private var welcomeTipCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .foregroundStyle(.blue)
+                Text("欢迎使用")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Spacer()
+                Button {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showWelcomeTip = false
+                        showAccessoryTip = true
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                tipRow(icon: "plus.circle.fill", color: .blue, text: "点击右上角 + 添加分类")
+                tipRow(icon: "hand.draw", color: .purple, text: "编辑模式下长按拖拽排序")
+                tipRow(icon: "bag.fill", color: .orange, text: "点击分类卡片查看套餐详情")
+                tipRow(icon: "gearshape.fill", color: .green, text: "底部配件管理添加商品")
+            }
+
+            Button {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    showWelcomeTip = false
+                    showAccessoryTip = true
+                }
+            } label: {
+                Text("我知道了")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.blue)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+        )
+        .onTapGesture {
+            // 防止点击穿透
+        }
+    }
+
+    private func tipRow(icon: String, color: Color, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(color)
+                .frame(width: 24)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func categoryGrid(geometry: GeometryProxy) -> some View {
@@ -221,6 +351,9 @@ struct ContentView: View {
                         )
                     }
                     .contentShape(Rectangle())
+                    .onTapGesture {
+                        categoryToEdit = category
+                    }
                     .background(
                         GeometryReader { cardGeometry in
                             Color.clear
@@ -244,6 +377,13 @@ struct ContentView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            categoryToEdit = category
+                        } label: {
+                            Label("编辑分类", systemImage: "pencil")
+                        }
+                    }
                     .background(
                         GeometryReader { cardGeometry in
                             Color.clear
@@ -343,6 +483,18 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Triangle Shape (三角形，用于气泡箭头)
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
+    }
+}
+
 struct CategoryCard: View {
     let category: Category
     var isIPad: Bool = false
@@ -352,9 +504,18 @@ struct CategoryCard: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: category.icon)
-                .font(.system(size: isIPad ? 48 : 40))
-                .foregroundStyle(.white)
+            if let customPath = category.customIconPath,
+               let image = ImageStorage.shared.loadImage(filename: customPath) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: isIPad ? 48 : 40, height: isIPad ? 48 : 40)
+                    .foregroundStyle(.white)
+            } else {
+                Image(systemName: category.icon)
+                    .font(.system(size: isIPad ? 48 : 40))
+                    .foregroundStyle(.white)
+            }
 
             Text(category.name)
                 .font(isIPad ? .title3 : .headline)
@@ -380,15 +541,24 @@ struct DragggingCardView: View {
     let initialFrame: CGRect
     let offset: CGSize
     let onDelete: () -> Void
-    
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             // 卡片
             VStack(spacing: 12) {
-                Image(systemName: category.icon)
-                    .font(.system(size: isIPad ? 48 : 40))
-                    .foregroundStyle(.white)
-                
+                if let customPath = category.customIconPath,
+                   let image = ImageStorage.shared.loadImage(filename: customPath) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: isIPad ? 48 : 40, height: isIPad ? 48 : 40)
+                        .foregroundStyle(.white)
+                } else {
+                    Image(systemName: category.icon)
+                        .font(.system(size: isIPad ? 48 : 40))
+                        .foregroundStyle(.white)
+                }
+
                 Text(category.name)
                     .font(isIPad ? .title3 : .headline)
                     .fontWeight(.bold)
@@ -427,10 +597,15 @@ struct CategoryEditView: View {
     @State private var name = ""
     @State private var selectedIcon = "iphone"
     @State private var selectedColorHex = "#007AFF"
+    @State private var customIconImage: UIImage?
+    @State private var customIconPath: String?
+    @State private var showCustomColorPicker = false
+    @State private var customColor: Color = .blue
+    @State private var selectedIconItem: PhotosPickerItem?
 
     private var isEditing: Bool { category != nil }
 
-    private let icons = ["iphone", "ipad", "laptopcomputer", "applewatch", "desktopcomputer", "headphones", "airpods", "airpodpro", "airpodsmax", "keyboard", "mouse", "tv", "hifispeaker", "printer", "gamecontroller"]
+    private let icons = ["iphone", "ipad", "laptopcomputer", "applewatch", "display", "headphones", "airpods", "airpodspro", "airpodsmax", "keyboard", "computermouse", "tv", "hifispeaker", "printer", "gamecontroller"]
 
     private let colors: [(name: String, hex: String)] = [
         ("蓝色", "#007AFF"),
@@ -451,24 +626,68 @@ struct CategoryEditView: View {
                 }
 
                 Section("图标") {
+                    // 系统图标
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 16) {
                         ForEach(icons, id: \.self) { icon in
                             Button {
                                 selectedIcon = icon
+                                customIconPath = nil
+                                customIconImage = nil
                             } label: {
                                 Image(systemName: icon)
                                     .font(.title2)
                                     .frame(width: 44, height: 44)
-                                    .background(selectedIcon == icon ? Color.blue.opacity(0.2) : Color.clear)
+                                    .background(selectedIcon == icon && customIconPath == nil ? Color.blue.opacity(0.2) : Color.clear)
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                             .buttonStyle(.plain)
                         }
                     }
                     .padding(.vertical, 8)
+
+                    // 自定义图标上传
+                    HStack {
+                        if let customImage = customIconImage {
+                            Image(uiImage: customImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 44, height: 44)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(.systemGray5))
+                                .frame(width: 44, height: 44)
+                                .overlay {
+                                    Image(systemName: "plus")
+                                        .foregroundStyle(.secondary)
+                                }
+                        }
+
+                        PhotosPicker(selection: $selectedIconItem, matching: .images) {
+                            Text(customIconPath != nil ? "更换自定义图标" : "上传自定义图标")
+                                .font(.subheadline)
+                                .foregroundStyle(.blue)
+                        }
+
+                        Spacer()
+
+                        if customIconPath != nil {
+                            Button {
+                                customIconPath = nil
+                                customIconImage = nil
+                                selectedIcon = icons.first ?? "iphone"
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
 
                 Section("颜色") {
+                    // 预设颜色
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 16) {
                         ForEach(colors, id: \.hex) { color in
                             Button {
@@ -493,6 +712,39 @@ struct CategoryEditView: View {
                         }
                     }
                     .padding(.vertical, 8)
+
+                    // 自定义颜色选择
+                    HStack {
+                        Circle()
+                            .fill(
+                                AngularGradient(
+                                    colors: [.red, .orange, .yellow, .green, .cyan, .blue, .purple, .red],
+                                    center: .center
+                                )
+                            )
+                            .frame(width: 40, height: 40)
+                            .overlay {
+                                Circle()
+                                    .stroke(Color(.systemGray4), lineWidth: 0.5)
+                            }
+                            .overlay {
+                                if selectedColorHex == customColorToHex() && !colors.contains(where: { $0.hex == selectedColorHex }) {
+                                    Image(systemName: "checkmark")
+                                        .font(.body)
+                                        .foregroundStyle(.white)
+                                        .shadow(color: .black.opacity(0.5), radius: 1)
+                                }
+                            }
+                        Button {
+                            showCustomColorPicker = true
+                        } label: {
+                            Text("自定义颜色")
+                                .font(.subheadline)
+                                .foregroundStyle(.blue)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
                 }
 
                 // 预览
@@ -500,9 +752,18 @@ struct CategoryEditView: View {
                     HStack {
                         Spacer()
                         VStack(spacing: 12) {
-                            Image(systemName: selectedIcon)
-                                .font(.system(size: 40))
-                                .foregroundStyle(.white)
+                            if let customImage = customIconImage {
+                                Image(uiImage: customImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 40, height: 40)
+                            } else {
+                                Image(systemName: selectedIcon)
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.white)
+                            }
                             Text(name.isEmpty ? "分类名称" : name)
                                 .font(.headline)
                                 .foregroundStyle(.white)
@@ -542,14 +803,48 @@ struct CategoryEditView: View {
                     .disabled(name.isEmpty)
                 }
             }
+            .sheet(isPresented: $showCustomColorPicker) {
+                CustomColorPickerView(selectedColorHex: $selectedColorHex, initialColor: Color(hex: selectedColorHex) ?? .blue)
+            }
+            .onChange(of: selectedIconItem) { newItem in
+                guard let newItem else { return }
+                newItem.loadTransferable(type: Data.self) { result in
+                    switch result {
+                    case .success(let data):
+                        if let data, let image = UIImage(data: data) {
+                            let iconId = UUID()
+                            if let path = ImageStorage.shared.saveImage(image, for: iconId) {
+                                DispatchQueue.main.async {
+                                    customIconPath = path
+                                    customIconImage = image
+                                }
+                            }
+                        }
+                    case .failure:
+                        break
+                    }
+                }
+            }
             .onAppear {
                 if let category = category {
                     name = category.name
                     selectedIcon = category.icon
                     selectedColorHex = category.colorHex
+                    customIconPath = category.customIconPath
+                    if let path = category.customIconPath {
+                        customIconImage = ImageStorage.shared.loadImage(filename: path)
+                    }
                 }
             }
         }
+    }
+
+    private func customColorToHex() -> String {
+        let uiColor = UIColor(customColor)
+        var r: CGFloat = 0; var g: CGFloat = 0; var b: CGFloat = 0; var a: CGFloat = 0
+        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let hex = String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
+        return hex
     }
 
     private func saveCategory() {
@@ -558,13 +853,91 @@ struct CategoryEditView: View {
             updated.name = name
             updated.icon = selectedIcon
             updated.colorHex = selectedColorHex
+            updated.customIconPath = customIconPath
             dataManager.updateCategory(updated)
         } else {
             let maxOrder = dataManager.categories.map(\.order).max() ?? -1
-            let newCategory = Category(name: name, icon: selectedIcon, colorHex: selectedColorHex, order: maxOrder + 1)
+            let newCategory = Category(name: name, icon: selectedIcon, colorHex: selectedColorHex, customIconPath: customIconPath, order: maxOrder + 1)
             dataManager.addCategory(newCategory)
         }
         dismiss()
+    }
+}
+
+// MARK: - Custom Color Picker View (自定义颜色选择器，类似PS色板)
+struct CustomColorPickerView: View {
+    @Binding var selectedColorHex: String
+    @State private var currentColor: Color
+    @Environment(\.dismiss) private var dismiss
+
+    init(selectedColorHex: Binding<String>, initialColor: Color) {
+        self._selectedColorHex = selectedColorHex
+        self._currentColor = State(initialValue: initialColor)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                ColorPicker("选择颜色", selection: $currentColor, supportsOpacity: false)
+                    .font(.headline)
+                    .padding(.horizontal)
+
+                // 预览
+                VStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(currentColor)
+                        .frame(height: 100)
+                        .overlay {
+                            Text(colorToHex(currentColor))
+                                .font(.system(.title3, design: .monospaced))
+                                .fontWeight(.semibold)
+                                .foregroundStyle(isLightColor(currentColor) ? .black : .white)
+                        }
+
+                    // 色相光谱条
+                    HueSpectrumBar(currentColor: $currentColor)
+
+                    // 亮度变化条
+                    BrightnessBar(currentColor: $currentColor)
+
+                    // 饱和度变化条
+                    SaturationBar(currentColor: $currentColor)
+                    .padding(.horizontal)
+                }
+                .padding(.vertical)
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("自定义颜色")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("确定") {
+                        selectedColorHex = colorToHex(currentColor)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func colorToHex(_ color: Color) -> String {
+        let uiColor = UIColor(color)
+        var r: CGFloat = 0; var g: CGFloat = 0; var b: CGFloat = 0; var a: CGFloat = 0
+        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
+    }
+
+    private func isLightColor(_ color: Color) -> Bool {
+        let uiColor = UIColor(color)
+        var r: CGFloat = 0; var g: CGFloat = 0; var b: CGFloat = 0; var a: CGFloat = 0
+        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        return luminance > 0.6
     }
 }
 
@@ -720,6 +1093,100 @@ class GridGestureCoordinatorView: UIView {
     
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
         return bounds.contains(point)
+    }
+}
+
+// MARK: - Hue Spectrum Bar
+struct HueSpectrumBar: View {
+    @Binding var currentColor: Color
+    private let hues: [Double] = {
+        var arr: [Double] = []
+        for i in 0..<12 { arr.append(Double(i) / 12.0) }
+        return arr
+    }()
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(hues, id: \.self) { hue in
+                Circle()
+                    .fill(Color(hue: hue, saturation: 1, brightness: 1))
+                    .frame(width: 28, height: 28)
+                    .onTapGesture {
+                        currentColor = Color(hue: hue, saturation: 1, brightness: 1)
+                    }
+            }
+        }
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Brightness Bar
+struct BrightnessBar: View {
+    @Binding var currentColor: Color
+    private let steps: [Double] = {
+        var arr: [Double] = []
+        for i in 0..<8 { arr.append(Double(i) / 7.0) }
+        return arr
+    }()
+
+    private func hsbOfCurrent() -> (h: CGFloat, s: CGFloat, b: CGFloat) {
+        let uiColor = UIColor(currentColor)
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return (h, s, b)
+    }
+
+    var body: some View {
+        let hsb = hsbOfCurrent()
+        HStack(spacing: 2) {
+            ForEach(steps, id: \.self) { brightness in
+                Circle()
+                    .fill(Color(hue: hsb.h, saturation: hsb.s, brightness: brightness))
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Circle().stroke(Color(.systemGray4), lineWidth: 0.5)
+                    )
+                    .onTapGesture {
+                        currentColor = Color(hue: hsb.h, saturation: hsb.s, brightness: brightness)
+                    }
+            }
+        }
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Saturation Bar
+struct SaturationBar: View {
+    @Binding var currentColor: Color
+    private let steps: [Double] = {
+        var arr: [Double] = []
+        for i in 0..<8 { arr.append(Double(i) / 7.0) }
+        return arr
+    }()
+
+    private func hsbOfCurrent() -> (h: CGFloat, s: CGFloat, b: CGFloat) {
+        let uiColor = UIColor(currentColor)
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return (h, s, b)
+    }
+
+    var body: some View {
+        let hsb = hsbOfCurrent()
+        HStack(spacing: 2) {
+            ForEach(steps, id: \.self) { saturation in
+                Circle()
+                    .fill(Color(hue: hsb.h, saturation: saturation, brightness: hsb.b))
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Circle().stroke(Color(.systemGray4), lineWidth: 0.5)
+                    )
+                    .onTapGesture {
+                        currentColor = Color(hue: hsb.h, saturation: saturation, brightness: hsb.b)
+                    }
+            }
+        }
+        .padding(.horizontal)
     }
 }
 
