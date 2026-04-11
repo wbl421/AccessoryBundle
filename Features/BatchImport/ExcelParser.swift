@@ -463,8 +463,11 @@ class ExcelParser {
 
         guard !imageDataList.isEmpty else { return result }
 
-        // 2. 解析 drawing 关系文件
-        var imageRels: [String: String] = [:] // rId -> media path
+        // 2. 尝试通过 drawing XML 解析图片位置
+        var imagePositions: [(row: Int, col: Int, imageData: Data)] = []
+
+        // 解析 drawing 关系文件
+        var imageRels: [String: String] = [:]
         for entry in archive {
             if entry.path.hasPrefix("xl/drawings/_rels/") && entry.path.hasSuffix(".rels") {
                 var data = Data()
@@ -479,8 +482,10 @@ class ExcelParser {
                             if let idRange = Range(match.range(at: 1), in: xmlStr),
                                let targetRange = Range(match.range(at: 2), in: xmlStr) {
                                 let id = String(xmlStr[idRange])
-                                let target = String(xmlStr[targetRange])
-                                imageRels[id] = "xl/drawings/" + target
+                                var target = String(xmlStr[targetRange])
+                                if target.hasPrefix("/") { target = String(target.dropFirst()) }
+                                if !target.hasPrefix("xl/") { target = "xl/drawings/" + target }
+                                imageRels[id] = target
                             }
                         }
                     }
@@ -488,14 +493,13 @@ class ExcelParser {
             }
         }
 
-        // 3. media path -> 图片Data 映射
+        // media path -> 图片Data 映射
         var mediaMap: [String: Data] = [:]
         for item in imageDataList {
             mediaMap[item.path] = item.data
         }
 
-        // 4. 解析 drawing XML
-        var imagePositions: [(row: Int, col: Int, imageData: Data)] = []
+        // 解析 drawing XML
         for entry in archive {
             if entry.path.hasPrefix("xl/drawings/") && entry.path.hasSuffix(".xml") && !entry.path.contains("_rels") {
                 var data = Data()
@@ -508,28 +512,40 @@ class ExcelParser {
             }
         }
 
-        // 5. 映射图片到单元格
+        // 3. 映射图片到单元格
         if !imagePositions.isEmpty {
+            // drawing XML 解析成功，按行列位置映射
             for pos in imagePositions {
                 if let image = UIImage(data: pos.imageData) {
                     if result[pos.row] == nil { result[pos.row] = [:] }
                     result[pos.row]?[pos.col] = image
                 }
             }
-        } else if !imageDataList.isEmpty {
-            // 回退：按图片顺序分配到图片列
+        } else {
+            // drawing XML 解析失败，按图片数量智能分配
+            // 每行最多5张缩略图+5张详情图=10张图
+            // 策略：前5张分配到缩略图列，后5张分配到详情图列
+            let imagesPerRow = thumbnailColumns.count + detailImageColumns.count // 10
             var imgIndex = 0
-            let imageColumns = thumbnailColumns + detailImageColumns
-            for row in 2...200 {
-                for col in imageColumns {
-                    if imgIndex < imageDataList.count {
-                        if let image = UIImage(data: imageDataList[imgIndex].data) {
-                            if result[row] == nil { result[row] = [:] }
-                            result[row]?[col] = image
+            var row = 2
+            while imgIndex < imageDataList.count {
+                var thumbIdx = 0
+                var detailIdx = 0
+                for _ in 0..<imagesPerRow {
+                    if imgIndex >= imageDataList.count { break }
+                    if let image = UIImage(data: imageDataList[imgIndex].data) {
+                        if result[row] == nil { result[row] = [:] }
+                        if thumbIdx < thumbnailColumns.count {
+                            result[row]?[thumbnailColumns[thumbIdx]] = image
+                            thumbIdx += 1
+                        } else {
+                            result[row]?[detailImageColumns[detailIdx]] = image
+                            detailIdx += 1
                         }
-                        imgIndex += 1
                     }
+                    imgIndex += 1
                 }
+                row += 1
             }
         }
 
