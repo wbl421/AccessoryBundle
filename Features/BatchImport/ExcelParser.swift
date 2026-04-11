@@ -252,10 +252,12 @@ class ExcelParser {
     private func extractWorksheetRows(from url: URL, sharedStrings: [String]) -> [[String?]] {
         guard let archive = openArchive(at: url) else { return [] }
 
-        // 查找第一个 xl/worksheets/sheet*.xml
+        // 通过 workbook.xml 找到第一个 sheet 的文件路径
+        let firstSheetPath = findFirstSheetPath(in: archive)
+
         var sheetData: Data?
         for entry in archive {
-            if entry.path.hasPrefix("xl/worksheets/sheet") && entry.path.hasSuffix(".xml") {
+            if entry.path == firstSheetPath {
                 var data = Data()
                 _ = try? archive.extract(entry) { chunk in
                     data.append(chunk)
@@ -265,10 +267,80 @@ class ExcelParser {
             }
         }
 
+        // 回退：如果通过 workbook.xml 找不到，按文件名顺序取第一个
+        if sheetData == nil {
+            for entry in archive {
+                if entry.path.hasPrefix("xl/worksheets/sheet") && entry.path.hasSuffix(".xml") {
+                    var data = Data()
+                    _ = try? archive.extract(entry) { chunk in
+                        data.append(chunk)
+                    }
+                    sheetData = data
+                    break
+                }
+            }
+        }
+
         guard let data = sheetData,
               let xmlStr = String(data: data, encoding: .utf8) else { return [] }
 
         return parseWorksheetXML(xmlStr, sharedStrings: sharedStrings)
+    }
+
+    /// 从 workbook.xml 和 workbook.xml.rels 中找到第一个 sheet 的路径
+    private func findFirstSheetPath(in archive: Archive) -> String {
+        // 1. 从 workbook.xml 中找到第一个 sheet 的 rId
+        var firstSheetRId: String?
+        for entry in archive {
+            if entry.path == "xl/workbook.xml" {
+                var data = Data()
+                _ = try? archive.extract(entry) { chunk in
+                    data.append(chunk)
+                }
+                if let xmlStr = String(data: data, encoding: .utf8) {
+                    // 匹配 <sheet name="xxx" sheetId="1" r:id="rId1"/>
+                    let pattern = #"r:id="([^"]+)""#
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                       let match = regex.firstMatch(in: xmlStr, range: NSRange(xmlStr.startIndex..., in: xmlStr)),
+                       let range = Range(match.range(at: 1), in: xmlStr) {
+                        firstSheetRId = String(xmlStr[range])
+                    }
+                }
+                break
+            }
+        }
+
+        guard let rId = firstSheetRId else { return "" }
+
+        // 2. 从 workbook.xml.rels 中找到 rId 对应的 Target 路径
+        for entry in archive {
+            if entry.path == "xl/_rels/workbook.xml.rels" {
+                var data = Data()
+                _ = try? archive.extract(entry) { chunk in
+                    data.append(chunk)
+                }
+                if let xmlStr = String(data: data, encoding: .utf8) {
+                    // 匹配 <Relationship Id="rId1" Target="worksheets/sheet1.xml"/>
+                    let pattern = #"Id="\(rId)"[^>]*Target="([^"]+)""#
+                    if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                       let match = regex.firstMatch(in: xmlStr, range: NSRange(xmlStr.startIndex..., in: xmlStr)),
+                       let range = Range(match.range(at: 1), in: xmlStr) {
+                        var target = String(xmlStr[range])
+                        // Target 可能是 "/xl/worksheets/sheet1.xml" 或 "worksheets/sheet1.xml"
+                        if target.hasPrefix("/") {
+                            target = String(target.dropFirst()) // 去掉开头的 /
+                        }
+                        if !target.hasPrefix("xl/") {
+                            target = "xl/" + target
+                        }
+                        return target
+                    }
+                }
+                break
+            }
+        }
+
+        return ""
     }
 
     /// 解析工作表 XML，提取行数据
