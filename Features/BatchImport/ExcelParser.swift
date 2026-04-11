@@ -40,18 +40,21 @@ struct ParsedImportResult: Identifiable {
 
 class ExcelParser {
 
-    // 模板列定义
-    private let headerNames = ["缩略图1", "缩略图2", "缩略图3", "商品名称", "商品价格", "商品分类", "商品详情", "详情图1", "详情图2", "详情图3"]
+    // 模板列定义（12列：3缩略图 + 4文字 + 5详情图）
+    private let headerNames = ["缩略图1", "缩略图2", "缩略图3", "商品名称", "商品价格", "商品分类", "商品详情", "详情图1", "详情图2", "详情图3", "详情图4", "详情图5"]
 
-    // 图片列索引 (0-2 缩略图, 7-9 详情图)
+    // 图片列索引 (0-2 缩略图, 7-11 详情图)
     private let thumbnailColumns = [0, 1, 2]
-    private let detailImageColumns = [7, 8, 9]
+    private let detailImageColumns = [7, 8, 9, 10, 11]
 
     // 文字列索引
     private let nameColumn = 3
     private let priceColumn = 4
     private let categoryColumn = 5
     private let descriptionColumn = 6
+
+    // 列数
+    private let columnCount = 12
 
     /// 解析 xlsx 文件
     func parseXLSX(at url: URL, existingCategories: [AccessoryCategory]) -> ParsedImportResult {
@@ -95,11 +98,11 @@ class ExcelParser {
             return ParsedImportResult(accessories: accessories, categories: [], errors: errors, warnings: warnings)
         }
 
-        // 3. 验证表头
+        // 3. 验证表头（支持带"（必填）"等后缀的表头）
         let headerRow = rowsData[0]
         for (index, expectedName) in headerNames.enumerated() {
             let actualName = headerRow[index]?.trimmingCharacters(in: .whitespaces) ?? ""
-            if actualName != expectedName {
+            if actualName != expectedName && !actualName.hasPrefix(expectedName) {
                 warnings.append(ParseWarning(row: 1, message: "第\(index + 1)列表头\"\(actualName)\"与模板\"\(expectedName)\"不一致，将按列位置解析"))
             }
         }
@@ -356,7 +359,7 @@ class ExcelParser {
             guard let rowBlockRange = Range(rowMatch.range(at: 1), in: xml) else { continue }
             let rowBlock = String(xml[rowBlockRange])
 
-            var rowData: [String?] = Array(repeating: nil, count: 10)
+            var rowData: [String?] = Array(repeating: nil, count: columnCount)
 
             // 提取所有 <c ...>...</c> 单元格
             let cellPattern = #"<c\s+([^>]*?)>(.*?)</c>"#
@@ -379,7 +382,7 @@ class ExcelParser {
                     colIndex = columnLetterToInt(colLetter)
                 }
 
-                guard let col = colIndex, col < 10 else { continue }
+                guard let col = colIndex, col < columnCount else { continue }
 
                 // 判断单元格类型
                 let isSharedString = attrs.contains("t=\"s\"")
@@ -516,8 +519,9 @@ class ExcelParser {
         } else if !imageDataList.isEmpty {
             // 回退：按图片顺序分配到图片列
             var imgIndex = 0
+            let imageColumns = thumbnailColumns + detailImageColumns
             for row in 2...200 {
-                for col in [0, 1, 2, 7, 8, 9] {
+                for col in imageColumns {
                     if imgIndex < imageDataList.count {
                         if let image = UIImage(data: imageDataList[imgIndex].data) {
                             if result[row] == nil { result[row] = [:] }
