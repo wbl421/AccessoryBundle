@@ -28,7 +28,8 @@ struct ParseWarning {
     var message: String
 }
 
-struct ParsedImportResult {
+struct ParsedImportResult: Identifiable {
+    let id = UUID()
     var accessories: [ParsedAccessory]
     var categories: [ParsedCategory]
     var errors: [ParseError]

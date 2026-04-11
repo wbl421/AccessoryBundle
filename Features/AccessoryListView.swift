@@ -110,7 +110,6 @@ struct AccessoryListView: View {
 
     // 批量导入相关
     @State private var showingDocumentPicker = false
-    @State private var showingImportPreview = false
     @State private var parsedResult: ParsedImportResult?
     @State private var showingTemplateShare = false
     @State private var importErrorMessage: String?
@@ -191,13 +190,15 @@ struct AccessoryListView: View {
         }
         .sheet(isPresented: $showingDocumentPicker) {
             DocumentPickerView { url in
-                parseImportFile(url: url)
+                // 延迟执行，让 sheet 先关闭再打开 fullScreenCover，避免冲突
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    parseImportFile(url: url)
+                }
             }
         }
-        .fullScreenCover(isPresented: $showingImportPreview) {
-            if let result = parsedResult {
-                ImportPreviewView(result: result)
-            }
+        .fullScreenCover(item: $parsedResult) { result in
+            ImportPreviewView(result: result)
+                .environmentObject(dataManager)
         }
         .sheet(isPresented: $showingTemplateShare) {
             if let templateURL = TemplateManager.shared.getTemplateURL() {
@@ -272,7 +273,6 @@ struct AccessoryListView: View {
         }
 
         parsedResult = result
-        showingImportPreview = true
     }
 
     private func startDrag(_ category: AccessoryCategory, _ index: Int, _ categories: [AccessoryCategory]) {
