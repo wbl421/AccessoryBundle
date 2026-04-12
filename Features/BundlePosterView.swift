@@ -1,4 +1,5 @@
 import SwiftUI
+import Photos
 
 // MARK: - 海报入口：配件款式选择
 struct PosterStyleSelectView: View {
@@ -521,12 +522,58 @@ struct PosterShareView: View {
     }
 
     private func saveToAlbum() {
-        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-        // UIImageWriteToSavedPhotosAlbum 是异步的，不会阻塞主线程
-        // 如果缺少权限，系统会自动弹出提示
-        // 简单延迟后检查是否保存成功
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            // 简单的视觉反馈，实际结果由系统权限决定
+        // 先检查权限
+        let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        switch status {
+        case .authorized, .limited:
+            performSave()
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
+                DispatchQueue.main.async {
+                    if newStatus == .authorized || newStatus == .limited {
+                        self.performSave()
+                    } else {
+                        self.saveResult = .failure("请在设置中允许访问相册")
+                    }
+                }
+            }
+        case .denied, .restricted:
+            saveResult = .failure("请在设置中允许访问相册")
+        @unknown default:
+            saveResult = .failure("未知错误")
+        }
+    }
+
+    private func performSave() {
+        let saver = ImageSaver()
+        saver.onSuccess = {
+            DispatchQueue.main.async {
+                self.saveResult = .success
+            }
+        }
+        saver.onFailure = { error in
+            DispatchQueue.main.async {
+                self.saveResult = .failure(error)
+            }
+        }
+        saver.save(image: image)
+    }
+}
+
+// MARK: - ImageSaver（处理 UIImageWriteToSavedPhotosAlbum 回调）
+class ImageSaver: NSObject {
+    var onSuccess: (() -> Void)?
+    var onFailure: ((String) -> Void)?
+
+    func save(image: UIImage) {
+        UIImageWriteToSavedPhotosAlbum(image, self, #selector(saveCompleted), nil)
+    }
+
+    @objc private func saveCompleted(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+        if let error = error {
+            onFailure?(error.localizedDescription)
+        } else {
+            onSuccess?()
         }
     }
 }
