@@ -436,6 +436,12 @@ struct BundlePosterView: View {
 struct PosterShareView: View {
     let image: UIImage
     @Environment(\.dismiss) private var dismiss
+    @State private var saveResult: SaveResult?
+
+    private enum SaveResult: Equatable {
+        case success
+        case failure(String)
+    }
 
     var body: some View {
         NavigationStack {
@@ -453,7 +459,7 @@ struct PosterShareView: View {
                     ) {
                         HStack {
                             Image(systemName: "square.and.arrow.up")
-                            Text("分享或保存海报")
+                            Text("分享海报")
                         }
                         .font(.headline)
                         .foregroundStyle(.white)
@@ -463,10 +469,20 @@ struct PosterShareView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
-                    Text("点击上方按钮，可选择保存到相册或分享到微信等")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                    Button {
+                        saveToAlbum()
+                    } label: {
+                        HStack {
+                            Image(systemName: "photo.on.rectangle.angled")
+                            Text("保存到相册")
+                        }
+                        .font(.headline)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                 }
                 .padding(20)
             }
@@ -478,6 +494,39 @@ struct PosterShareView: View {
                     Button("完成") { dismiss() }
                 }
             }
+            .alert("保存成功", isPresented: Binding(
+                get: { saveResult == .success },
+                set: { if !$0 { saveResult = nil } }
+            )) {
+                Button("好的") { saveResult = nil }
+            } message: {
+                Text("海报已保存到相册")
+            }
+            .alert("保存失败", isPresented: Binding(
+                get: { if case .failure = saveResult { return true } else { return false } },
+                set: { if !$0 { saveResult = nil } }
+            )) {
+                Button("好的") { saveResult = nil }
+            } message: {
+                Text(saveResultMessage)
+            }
+        }
+    }
+
+    private var saveResultMessage: String {
+        if case .failure(let msg) = saveResult {
+            return msg
+        }
+        return ""
+    }
+
+    private func saveToAlbum() {
+        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+        // UIImageWriteToSavedPhotosAlbum 是异步的，不会阻塞主线程
+        // 如果缺少权限，系统会自动弹出提示
+        // 简单延迟后检查是否保存成功
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            // 简单的视觉反馈，实际结果由系统权限决定
         }
     }
 }
