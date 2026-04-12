@@ -53,8 +53,8 @@ struct ContentView: View {
                     VStack(spacing: 0) {
                         ScrollView {
                             VStack(spacing: 24) {
-                                // Logo 区域（仅编辑模式显示）
-                                if isEditMode {
+                                // Logo 区域（有 Logo 时始终显示，编辑模式可操作）
+                                if appSettings.logoImage != nil || isEditMode {
                                     logoSection
                                 }
 
@@ -202,39 +202,48 @@ struct ContentView: View {
             .padding(.top, 8)
     }
 
-    // MARK: - Logo 区域（仅编辑模式显示）
+    // MARK: - Logo 区域（有 Logo 时始终显示）
     private var logoSection: some View {
         VStack(spacing: 12) {
             if let logoImage = appSettings.logoImage {
-                // 已有 logo - 显示带删除按钮
+                // 已有 logo
                 ZStack(alignment: .topTrailing) {
-                    Button {
-                        // 点击已有 logo 进入编辑
-                        selectedLogoImage = logoImage
-                        showLogoEdit = true
-                    } label: {
+                    if isEditMode {
+                        // 编辑模式：可点击重新编辑
+                        Button {
+                            selectedLogoImage = logoImage
+                            showLogoEdit = true
+                        } label: {
+                            Image(uiImage: logoImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 140 * appSettings.logoScale, height: 140 * appSettings.logoScale)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.systemGray6))
+                                )
+                        }
+                        .buttonStyle(.plain)
+
+                        // 删除按钮（仅编辑模式显示）
+                        Button {
+                            showDeleteLogoAlert = true
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(.red)
+                                .background(Circle().fill(.white))
+                        }
+                        .offset(x: 8, y: -8)
+                    } else {
+                        // 非编辑模式：只显示 Logo
                         Image(uiImage: logoImage)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 140 * appSettings.logoScale, height: 140 * appSettings.logoScale)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemGray6))
-                            )
                     }
-                    .buttonStyle(.plain)
-
-                    // 删除按钮
-                    Button {
-                        showDeleteLogoAlert = true
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.red)
-                            .background(Circle().fill(.white))
-                    }
-                    .offset(x: 8, y: -8)
                 }
                 .alert("删除 Logo", isPresented: $showDeleteLogoAlert) {
                     Button("取消", role: .cancel) {}
@@ -244,8 +253,8 @@ struct ContentView: View {
                 } message: {
                     Text("确定要删除已设置的 Logo 吗？")
                 }
-            } else {
-                // 没有 logo - 显示上传占位符
+            } else if isEditMode {
+                // 没有 logo 且编辑模式 - 显示上传占位符
                 Button {
                     showLogoPicker = true
                 } label: {
