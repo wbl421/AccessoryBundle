@@ -214,19 +214,16 @@ struct ContentView: View {
                             selectedLogoImage = logoImage
                             showLogoEdit = true
                         } label: {
-                            GeometryReader { geometry in
-                                Image(uiImage: logoImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: geometry.size.width * appSettings.imageScale, height: geometry.size.height * appSettings.imageScale)
-                                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                            }
-                            .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemGray6))
-                            )
+                            Image(uiImage: logoImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: appSettings.containerWidth * appSettings.imageScale, height: appSettings.containerHeight * appSettings.imageScale)
+                                .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.systemGray6))
+                                )
                         }
                         .buttonStyle(.plain)
 
@@ -242,17 +239,15 @@ struct ContentView: View {
                         .offset(x: 8, y: -8)
                     } else {
                         // 非编辑模式：只显示图片
-                        GeometryReader { geometry in
-                            Image(uiImage: logoImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: geometry.size.width * appSettings.imageScale, height: geometry.size.height * appSettings.imageScale)
-                                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                        }
-                        .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        Image(uiImage: logoImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: appSettings.containerWidth * appSettings.imageScale, height: appSettings.containerHeight * appSettings.imageScale)
+                            .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
+                .frame(maxWidth: .infinity)  // 水平居中
                 .alert("删除图片", isPresented: $showDeleteLogoAlert) {
                     Button("取消", role: .cancel) {}
                     Button("删除", role: .destructive) {
