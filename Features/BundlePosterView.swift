@@ -230,6 +230,9 @@ struct BundlePosterView: View {
     let bundlePrice: Int
     let accessories: [PosterAccessoryItem]
 
+    // 获取 app 设置
+    private var appSettings: AppSettings { AppSettings.shared }
+
     private var savings: Int { originalPrice - bundlePrice }
     private var discount: Double { originalPrice > 0 ? Double(bundlePrice) / Double(originalPrice) : 1.0 }
 
@@ -259,9 +262,18 @@ struct BundlePosterView: View {
             )
 
             VStack(spacing: 8) {
-                Image(systemName: "bag.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.white)
+                // 显示自定义 Logo 或默认图标
+                if let logoImage = appSettings.logoImage {
+                    Image(uiImage: logoImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    Image(systemName: "bag.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.white)
+                }
                 Text(bundleName)
                     .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(.white)

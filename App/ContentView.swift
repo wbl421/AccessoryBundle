@@ -12,6 +12,7 @@ struct CardFramePreferenceKey: PreferenceKey {
 struct ContentView: View {
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var onboardingManager: OnboardingManager
+    @StateObject private var appSettings = AppSettings.shared
     @State private var showingAddCategory = false
     @State private var categoryToEdit: Category?
     @State private var isEditMode = false
@@ -28,6 +29,11 @@ struct ContentView: View {
     // 提示相关
     @State private var showWelcomeTip: Bool = false
     @State private var showAccessoryTip: Bool = false
+
+    // Logo 编辑相关
+    @State private var showLogoPicker = false
+    @State private var selectedLogoImage: UIImage?
+    @State private var showDeleteLogoAlert = false
     
     // 判断是否是 iPad
     private var isIPad: Bool {
@@ -46,6 +52,11 @@ struct ContentView: View {
                     VStack(spacing: 0) {
                         ScrollView {
                             VStack(spacing: 24) {
+                                // Logo 区域（仅编辑模式显示）
+                                if isEditMode {
+                                    logoSection
+                                }
+
                                 headerView
 
                                 // 欢迎提示卡片
@@ -188,6 +199,83 @@ struct ContentView: View {
             .fontWeight(.bold)
             .foregroundStyle(.primary)
             .padding(.top, 8)
+    }
+
+    // MARK: - Logo 区域（仅编辑模式显示）
+    private var logoSection: some View {
+        VStack(spacing: 12) {
+            if let logoImage = appSettings.logoImage {
+                // 已有 logo - 显示带删除按钮
+                ZStack(alignment: .topTrailing) {
+                    Button {
+                        showLogoPicker = true
+                    } label: {
+                        Image(uiImage: logoImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemGray6))
+                            )
+                    }
+                    .buttonStyle(.plain)
+
+                    // 删除按钮
+                    Button {
+                        showDeleteLogoAlert = true
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.red)
+                            .background(Circle().fill(.white))
+                    }
+                    .offset(x: 8, y: -8)
+                }
+                .alert("删除 Logo", isPresented: $showDeleteLogoAlert) {
+                    Button("取消", role: .cancel) {}
+                    Button("删除", role: .destructive) {
+                        appSettings.deleteLogo()
+                    }
+                } message: {
+                    Text("确定要删除已设置的 Logo 吗？")
+                }
+            } else {
+                // 没有 logo - 显示上传占位符
+                Button {
+                    showLogoPicker = true
+                } label: {
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.secondary)
+                        Text("点击上传 Logo")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 100, height: 100)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
+                            .foregroundStyle(.tertiary)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .sheet(isPresented: $showLogoPicker) {
+            ImagePicker(image: Binding(
+                get: { selectedLogoImage ?? UIImage() },
+                set: { newImage in
+                    selectedLogoImage = newImage
+                    if newImage.size.width > 0 {
+                        // 直接保存，不需要预览编辑
+                        appSettings.saveLogo(newImage)
+                    }
+                }
+            ))
+        }
     }
 
     // 欢迎提示卡片
@@ -1187,6 +1275,49 @@ struct SaturationBar: View {
             }
         }
         .padding(.horizontal)
+    }
+}
+
+// MARK: - 图片选择器
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        config.filter = .images
+        config.selectionLimit = 1
+
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: ImagePicker
+
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            picker.dismiss(animated: true)
+
+            guard let result = results.first else { return }
+
+            result.itemProvider.loadObject(ofClass: UIImage.self) { object, error in
+                if let image = object as? UIImage {
+                    DispatchQueue.main.async {
+                        self.parent.image = image
+                    }
+                }
+            }
+        }
     }
 }
 
