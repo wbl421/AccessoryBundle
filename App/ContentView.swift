@@ -33,6 +33,7 @@ struct ContentView: View {
     // Logo 编辑相关
     @State private var showLogoPicker = false
     @State private var selectedLogoImage: UIImage?
+    @State private var showLogoEdit = false
     @State private var showDeleteLogoAlert = false
     
     // 判断是否是 iPad
@@ -208,12 +209,14 @@ struct ContentView: View {
                 // 已有 logo - 显示带删除按钮
                 ZStack(alignment: .topTrailing) {
                     Button {
-                        showLogoPicker = true
+                        // 点击已有 logo 进入编辑
+                        selectedLogoImage = logoImage
+                        showLogoEdit = true
                     } label: {
                         Image(uiImage: logoImage)
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 100, height: 100)
+                            .frame(width: 140 * appSettings.logoScale, height: 140 * appSettings.logoScale)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
@@ -248,13 +251,13 @@ struct ContentView: View {
                 } label: {
                     VStack(spacing: 8) {
                         Image(systemName: "photo.badge.plus")
-                            .font(.system(size: 32))
+                            .font(.system(size: 36))
                             .foregroundStyle(.secondary)
                         Text("点击上传 Logo")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    .frame(width: 100, height: 100)
+                    .frame(width: 140, height: 140)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
                             .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
@@ -270,11 +273,16 @@ struct ContentView: View {
                 set: { newImage in
                     selectedLogoImage = newImage
                     if newImage.size.width > 0 {
-                        // 直接保存，不需要预览编辑
-                        appSettings.saveLogo(newImage)
+                        // 选择图片后进入编辑界面
+                        showLogoEdit = true
                     }
                 }
             ))
+        }
+        .sheet(isPresented: $showLogoEdit) {
+            if let image = selectedLogoImage {
+                LogoEditView(settings: appSettings, image: image)
+            }
         }
     }
 
@@ -1279,48 +1287,6 @@ struct SaturationBar: View {
 }
 
 // MARK: - 图片选择器
-struct ImagePicker: UIViewControllerRepresentable {
-    @Binding var image: UIImage
-
-    func makeUIViewController(context: Context) -> PHPickerViewController {
-        var config = PHPickerConfiguration()
-        config.filter = .images
-        config.selectionLimit = 1
-
-        let picker = PHPickerViewController(configuration: config)
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        let parent: ImagePicker
-
-        init(_ parent: ImagePicker) {
-            self.parent = parent
-        }
-
-        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            picker.dismiss(animated: true)
-
-            guard let result = results.first else { return }
-
-            result.itemProvider.loadObject(ofClass: UIImage.self) { object, error in
-                if let image = object as? UIImage {
-                    DispatchQueue.main.async {
-                        self.parent.image = image
-                    }
-                }
-            }
-        }
-    }
-}
-
 #Preview {
     ContentView()
         .environmentObject(DataManager.shared)

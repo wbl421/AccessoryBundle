@@ -5,6 +5,7 @@ class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
     private let logoPathKey = "app_logo_path"
+    private let logoScaleKey = "app_logo_scale"
 
     @Published var logoPath: String? {
         didSet {
@@ -16,6 +17,12 @@ class AppSettings: ObservableObject {
         }
     }
 
+    @Published var logoScale: Double {
+        didSet {
+            UserDefaults.standard.set(logoScale, forKey: logoScaleKey)
+        }
+    }
+
     var logoImage: UIImage? {
         guard let path = logoPath else { return nil }
         return ImageStorage.shared.loadImage(filename: path)
@@ -23,6 +30,8 @@ class AppSettings: ObservableObject {
 
     private init() {
         self.logoPath = UserDefaults.standard.string(forKey: logoPathKey)
+        let savedScale = UserDefaults.standard.double(forKey: logoScaleKey)
+        self.logoScale = savedScale > 0 ? savedScale : 1.0
     }
 
     func saveLogo(_ image: UIImage) {
@@ -42,5 +51,6 @@ class AppSettings: ObservableObject {
             ImageStorage.shared.deleteImage(filename: path)
         }
         logoPath = nil
+        logoScale = 1.0
     }
 }

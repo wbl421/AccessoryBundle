@@ -267,7 +267,7 @@ struct BundlePosterView: View {
                     Image(uiImage: logoImage)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 60, height: 60)
+                        .frame(width: 50 * appSettings.logoScale, height: 50 * appSettings.logoScale)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
                     Image(systemName: "bag.fill")
