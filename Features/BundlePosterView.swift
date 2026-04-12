@@ -206,8 +206,12 @@ struct PosterStyleSelectView: View {
 
         let originalPrice = selectedDetails.reduce(0) { $0 + $1.price }
 
-        // 使用 DispatchQueue.main.async 确保渲染完成后再显示
-        DispatchQueue.main.async {
+        // 先清空旧图片，显示加载状态
+        posterImage = nil
+        showPosterPreview = true
+
+        // 延迟渲染，确保 sheet 已打开
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             let posterView = BundlePosterView(
                 bundleName: data.bundle.name,
                 originalPrice: originalPrice,
@@ -219,7 +223,6 @@ struct PosterStyleSelectView: View {
             renderer.scale = 3.0
             if let image = renderer.uiImage {
                 self.posterImage = image
-                self.showPosterPreview = true
             }
         }
     }
@@ -239,9 +242,6 @@ struct BundlePosterView: View {
     let originalPrice: Int
     let bundlePrice: Int
     let accessories: [PosterAccessoryItem]
-
-    // 获取 app 设置
-    private var appSettings: AppSettings { AppSettings.shared }
 
     private var savings: Int { originalPrice - bundlePrice }
     private var discount: Double { originalPrice > 0 ? Double(bundlePrice) / Double(originalPrice) : 1.0 }
@@ -272,21 +272,9 @@ struct BundlePosterView: View {
             )
 
             VStack(spacing: 8) {
-                // 显示自定义 Logo 或默认图标
-                if let logoImage = appSettings.logoImage {
-                    // 海报中使用合适的尺寸（基于用户设置的比例）
-                    let posterWidth: CGFloat = min(60 * appSettings.imageScale, 80)
-                    let posterHeight: CGFloat = min(40 * appSettings.imageScale, 60)
-                    Image(uiImage: logoImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: posterWidth, height: posterHeight)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                } else {
-                    Image(systemName: "bag.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.white)
-                }
+                Image(systemName: "bag.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.white)
                 Text(bundleName)
                     .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(.white)
