@@ -249,7 +249,7 @@ struct BundleEditView: View {
 
     private func accessoryItemRow(_ item: BundleAccessoryItem) -> some View {
         let accessory = dataManager.accessories.first { $0.id == item.accessoryId }
-        return HStack(spacing: 12) {
+        return HStack(spacing: 14) {
             Group {
                 if let imagePath = item.customImagePath ?? accessory?.thumbnailPaths.first,
                    let image = ImageStorage.shared.loadImage(filename: imagePath) {
@@ -262,21 +262,34 @@ struct BundleEditView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 50, height: 50)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .frame(width: 56, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
             .background(Color.gray.opacity(0.1))
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(item.customName ?? accessory?.name ?? "未知配件")
                     .font(.body)
                     .fontWeight(.medium)
+                    .lineLimit(2)
                 Text("¥\(item.customPrice ?? accessory?.price ?? 0)")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            
+
             Spacer()
+
+            // 删除按钮
+            Button {
+                removeItem(item)
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red.opacity(0.8))
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
     }
     
     private func removeItemsAtOffsets(at offsets: IndexSet) {
