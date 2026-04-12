@@ -449,7 +449,7 @@ struct AccessoryGroupRow: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 4) {
+            HStack(spacing: 4) {
                 Text("¥\(displayPrice)")
                     .font(.body)
                     .fontWeight(.semibold)
