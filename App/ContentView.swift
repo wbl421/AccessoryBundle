@@ -211,7 +211,7 @@ struct ContentView: View {
             VStack(spacing: appSettings.bottomPadding) {
                 if let logoImage = appSettings.logoImage {
                     // 已有图片
-                    ZStack(alignment: .topTrailing) {
+                    ZStack(alignment: .topLeading) {
                         if isEditMode {
                             // 编辑模式：可点击重新编辑
                             Button {
@@ -231,7 +231,7 @@ struct ContentView: View {
                             }
                             .buttonStyle(.plain)
 
-                            // 删除按钮（仅编辑模式显示）
+                            // 删除按钮（仅编辑模式显示，放左边）
                             Button {
                                 showDeleteLogoAlert = true
                             } label: {
@@ -240,7 +240,7 @@ struct ContentView: View {
                                     .foregroundStyle(.red)
                                     .background(Circle().fill(.white))
                             }
-                            .offset(x: 8, y: -8)
+                            .offset(x: -8, y: -8)
                         } else {
                             // 非编辑模式：只显示图片
                             Image(uiImage: logoImage)
