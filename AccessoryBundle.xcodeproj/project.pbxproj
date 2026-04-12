@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -33,7 +33,7 @@
 		1F2BF13025FF25392E09603D /* ImportPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPreviewView.swift; sourceTree = "<group>"; };
 		24E914A1D4DBAC8E3560F201 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4680F960FA57A2E5E045CF7C /* BundleEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleEditView.swift; sourceTree = "<group>"; };
-		6A86424B3B780C66B5E44193 /* AccessoryBundle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AccessoryBundle.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6A86424B3B780C66B5E44193 /* AccessoryBundle.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AccessoryBundle.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7004441B143671C5073DE5A3 /* BundlePosterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundlePosterView.swift; sourceTree = "<group>"; };
 		774428C5475341CA85E35728 /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		84BA740192B4FE52F62CEE1D /* BundleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleDetailView.swift; sourceTree = "<group>"; };
@@ -43,7 +43,7 @@
 		AF12FD6E77D29B3CA9B83DBD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B260823288E45C7FD6932510 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
 		B546D188AEFB7320033546B6 /* AccessoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessoryListView.swift; sourceTree = "<group>"; };
-		BCAF40826BC376EB7D2F8F14 /* import_template.xlsx */ = {isa = PBXFileReference; lastKnownFileType = file; path = import_template.xlsx; sourceTree = "<group>"; };
+		BCAF40826BC376EB7D2F8F14 /* import_template.xlsx */ = {isa = PBXFileReference; path = import_template.xlsx; sourceTree = "<group>"; };
 		C360C817BC12522225D06262 /* ExcelParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcelParser.swift; sourceTree = "<group>"; };
 		D9B49F82F54ECFA4477B1A72 /* DocumentPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPickerView.swift; sourceTree = "<group>"; };
 		E2AF530CB2D14DAAE1DA1189 /* AccessoryBundleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessoryBundleApp.swift; sourceTree = "<group>"; };
@@ -168,6 +168,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					5824FB0AD8CE410AE71ABC31 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -185,6 +186,7 @@
 			packageReferences = (
 				FB4C813666DA8A573CC8A1AB /* XCRemoteSwiftPackageReference "CoreXLSX" */,
 			);
+			preferredProjectObjectVersion = 54;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -358,7 +360,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 6CXPAAH6HA;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -378,7 +380,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 6CXPAAH6HA;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

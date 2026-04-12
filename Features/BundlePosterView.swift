@@ -1,5 +1,4 @@
 import SwiftUI
-import Photos
 
 // MARK: - 海报入口：配件款式选择
 struct PosterStyleSelectView: View {
@@ -437,9 +436,6 @@ struct BundlePosterView: View {
 struct PosterShareView: View {
     let image: UIImage
     @Environment(\.dismiss) private var dismiss
-    @State private var showSaveSuccess = false
-    @State private var showSaveError = false
-    @State private var errorMessage = ""
 
     var body: some View {
         NavigationStack {
@@ -457,7 +453,7 @@ struct PosterShareView: View {
                     ) {
                         HStack {
                             Image(systemName: "square.and.arrow.up")
-                            Text("分享/保存海报")
+                            Text("分享或保存海报")
                         }
                         .font(.headline)
                         .foregroundStyle(.white)
@@ -467,20 +463,10 @@ struct PosterShareView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
 
-                    Button {
-                        saveToPhotoLibrary()
-                    } label: {
-                        HStack {
-                            Image(systemName: "photo.on.rectangle.angled")
-                            Text("保存到相册")
-                        }
-                        .font(.headline)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.red.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
+                    Text("点击上方按钮，可选择保存到相册或分享到微信等")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
                 .padding(20)
             }
@@ -490,51 +476,6 @@ struct PosterShareView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("完成") { dismiss() }
-                }
-            }
-            .alert("保存成功", isPresented: $showSaveSuccess) {
-                Button("好的") {}
-            } message: {
-                Text("海报已保存到相册")
-            }
-            .alert("保存失败", isPresented: $showSaveError) {
-                Button("好的") {}
-            } message: {
-                Text(errorMessage)
-            }
-        }
-    }
-
-    private func saveToPhotoLibrary() {
-        PHPhotoLibrary.requestAuthorization { status in
-            DispatchQueue.main.async {
-                switch status {
-                case .authorized, .limited:
-                    self.performSave()
-                case .denied, .restricted:
-                    self.errorMessage = "请在设置中允许访问相册"
-                    self.showSaveError = true
-                case .notDetermined:
-                    self.errorMessage = "无法确定相册权限"
-                    self.showSaveError = true
-                @unknown default:
-                    self.errorMessage = "未知错误"
-                    self.showSaveError = true
-                }
-            }
-        }
-    }
-
-    private func performSave() {
-        PHPhotoLibrary.shared().performChanges {
-            PHAssetChangeRequest.creationRequestForAsset(from: image)
-        } completionHandler: { success, error in
-            DispatchQueue.main.async {
-                if success {
-                    self.showSaveSuccess = true
-                } else {
-                    self.errorMessage = error?.localizedDescription ?? "保存失败"
-                    self.showSaveError = true
                 }
             }
         }
