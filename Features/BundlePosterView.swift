@@ -127,7 +127,7 @@ struct PosterStyleSelectView: View {
                                                     .frame(height: 8)
                                             }
                                             .padding(4)
-                                        } else {
+                                        } else if template == .card {
                                             VStack(spacing: 4) {
                                                 RoundedRectangle(cornerRadius: 2)
                                                     .fill(Color.blue.opacity(0.6))
@@ -137,6 +137,22 @@ struct PosterStyleSelectView: View {
                                                         .fill(Color.gray.opacity(0.2))
                                                     RoundedRectangle(cornerRadius: 2)
                                                         .fill(Color.gray.opacity(0.2))
+                                                }
+                                            }
+                                            .padding(4)
+                                        } else {
+                                            // 深色款预览
+                                            VStack(spacing: 4) {
+                                                Rectangle()
+                                                    .fill(Color(red: 0.12, green: 0.12, blue: 0.15))
+                                                    .frame(height: 20)
+                                                HStack(spacing: 4) {
+                                                    Circle()
+                                                        .fill(Color(red: 0.85, green: 0.65, blue: 0.13))
+                                                        .frame(width: 8, height: 8)
+                                                    Rectangle()
+                                                        .fill(Color.gray.opacity(0.4))
+                                                        .frame(height: 6)
                                                 }
                                             }
                                             .padding(4)
@@ -632,6 +648,7 @@ enum PosterTemplate: String, CaseIterable, Identifiable {
     case classic = "经典款"
     case simple = "简约款"
     case card = "卡片款"
+    case dark = "深色款"
 
     var id: String { rawValue }
 
@@ -640,6 +657,7 @@ enum PosterTemplate: String, CaseIterable, Identifiable {
         case .classic: return "红色渐变背景，两列网格展示"
         case .simple: return "白色简约，列表排列"
         case .card: return "卡片风格，大图展示"
+        case .dark: return "深色背景，金色点缀"
         }
     }
 }
@@ -852,6 +870,137 @@ struct BundlePosterViewCard: View {
     }
 }
 
+// MARK: - 海报模板4：深色款
+struct BundlePosterViewDark: View {
+    let bundleName: String
+    let originalPrice: Int
+    let bundlePrice: Int
+    let accessories: [PosterAccessoryItem]
+
+    private var savings: Int { originalPrice - bundlePrice }
+
+    // 金色
+    private let goldColor = Color(red: 0.85, green: 0.65, blue: 0.13)
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 顶部品牌区
+            VStack(spacing: 16) {
+                Image(systemName: "bag.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(goldColor)
+
+                Text(bundleName)
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+
+                // 价格区
+                VStack(spacing: 8) {
+                    Text("套餐价")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.gray)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("¥")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(goldColor)
+                        Text("\(bundlePrice)")
+                            .font(.system(size: 48, weight: .bold))
+                            .foregroundStyle(goldColor)
+                    }
+
+                    if savings > 0 {
+                        HStack(spacing: 12) {
+                            Text("原价 ¥\(originalPrice)")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.gray)
+                                .strikethrough()
+                            Text("立省 ¥\(savings)")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(red: 0.4, green: 0.8, blue: 0.4))
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 30)
+            .frame(maxWidth: .infinity)
+            .background(Color(red: 0.12, green: 0.12, blue: 0.15))
+
+            // 分割线
+            Rectangle()
+                .fill(goldColor.opacity(0.3))
+                .frame(height: 1)
+
+            // 配件列表
+            VStack(spacing: 0) {
+                ForEach(Array(accessories.enumerated()), id: \.offset) { index, item in
+                    HStack(spacing: 14) {
+                        // 序号
+                        Text("\(index + 1)")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Color(red: 0.12, green: 0.12, blue: 0.15))
+                            .frame(width: 24, height: 24)
+                            .background(goldColor)
+                            .clipShape(Circle())
+
+                        // 图片
+                        Group {
+                            if let path = item.imagePath, let image = ImageStorage.shared.loadImage(filename: path) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                Color.gray.opacity(0.3)
+                            }
+                        }
+                        .frame(width: 65, height: 65)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                        // 信息
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.categoryName)
+                                .font(.system(size: 11))
+                                .foregroundStyle(.gray)
+                            Text(item.displayName)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(.white)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Spacer()
+
+                        Text("¥\(item.price)")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(goldColor)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+
+                    if index < accessories.count - 1 {
+                        Divider()
+                            .background(Color.white.opacity(0.1))
+                            .padding(.horizontal, 20)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+            .background(Color(red: 0.1, green: 0.1, blue: 0.12))
+
+            // 底部
+            Text("精选配件 品质保证")
+                .font(.system(size: 12))
+                .foregroundStyle(.gray)
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+                .background(Color(red: 0.12, green: 0.12, blue: 0.15))
+        }
+        .frame(width: 375)
+        .background(Color(red: 0.1, green: 0.1, blue: 0.12))
+    }
+}
+
 // MARK: - 海报工厂方法
 func createPosterView(
     template: PosterTemplate,
@@ -877,6 +1026,13 @@ func createPosterView(
         ))
     case .card:
         return AnyView(BundlePosterViewCard(
+            bundleName: bundleName,
+            originalPrice: originalPrice,
+            bundlePrice: bundlePrice,
+            accessories: accessories
+        ))
+    case .dark:
+        return AnyView(BundlePosterViewDark(
             bundleName: bundleName,
             originalPrice: originalPrice,
             bundlePrice: bundlePrice,
