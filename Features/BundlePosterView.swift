@@ -59,8 +59,14 @@ struct PosterStyleSelectView: View {
                 }
             }
             .sheet(isPresented: $showPosterPreview) {
-                if let posterImage = posterImage {
-                    PosterShareView(image: posterImage)
+                if let image = posterImage {
+                    PosterShareView(image: image)
+                } else {
+                    // 加载中
+                    ZStack {
+                        Color(.systemGroupedBackground)
+                        ProgressView("生成中...")
+                    }
                 }
             }
         }
@@ -199,18 +205,22 @@ struct PosterStyleSelectView: View {
         }
 
         let originalPrice = selectedDetails.reduce(0) { $0 + $1.price }
-        let posterView = BundlePosterView(
-            bundleName: data.bundle.name,
-            originalPrice: originalPrice,
-            bundlePrice: data.bundle.price,
-            accessories: selectedDetails
-        )
 
-        let renderer = ImageRenderer(content: posterView)
-        renderer.scale = 3.0
-        if let image = renderer.uiImage {
-            posterImage = image
-            showPosterPreview = true
+        // 使用 DispatchQueue.main.async 确保渲染完成后再显示
+        DispatchQueue.main.async {
+            let posterView = BundlePosterView(
+                bundleName: data.bundle.name,
+                originalPrice: originalPrice,
+                bundlePrice: data.bundle.price,
+                accessories: selectedDetails
+            )
+
+            let renderer = ImageRenderer(content: posterView)
+            renderer.scale = 3.0
+            if let image = renderer.uiImage {
+                self.posterImage = image
+                self.showPosterPreview = true
+            }
         }
     }
 }
