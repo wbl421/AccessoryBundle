@@ -72,26 +72,42 @@ struct BundleListView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
-                ForEach(Array(localBundles.enumerated()), id: \.element.id) { offset, element in
-                    DraggableBundleRow(
-                        bundle: element,
-                        index: offset,
-                        dragItem: dragItem,
-                        dragOffset: dragOffset,
-                        dragTargetIndex: dragTargetIndex,
-                        longPressItem: longPressItem,
-                        localBundles: localBundles,
-                        isEditMode: isEditMode,
-                        onDragStart: { startDrag($0, $1, $2) },
-                        onDragUpdate: { updateDrag($0, $1) },
-                        onDragEnd: { endDrag($0, $1, $2) },
-                        onLongPress: { longPressItem = $0 },
-                        onDelete: { onDeleteBundle($0) }
-                    )
+            if localBundles.isEmpty {
+                VStack(spacing: 16) {
+                    Spacer().frame(height: 60)
+                    Image(systemName: "bag")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.secondary)
+                    Text("暂无套餐")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Text("点击右上角 + 添加套餐")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
                 }
+                .frame(maxWidth: .infinity)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(Array(localBundles.enumerated()), id: \.element.id) { offset, element in
+                        DraggableBundleRow(
+                            bundle: element,
+                            index: offset,
+                            dragItem: dragItem,
+                            dragOffset: dragOffset,
+                            dragTargetIndex: dragTargetIndex,
+                            longPressItem: longPressItem,
+                            localBundles: localBundles,
+                            isEditMode: isEditMode,
+                            onDragStart: { startDrag($0, $1, $2) },
+                            onDragUpdate: { updateDrag($0, $1) },
+                            onDragEnd: { endDrag($0, $1, $2) },
+                            onLongPress: { longPressItem = $0 },
+                            onDelete: { onDeleteBundle($0) }
+                        )
+                    }
+                }
+                .padding(16)
             }
-            .padding(16)
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("\(category.name)套餐")
