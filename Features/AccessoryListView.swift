@@ -663,7 +663,7 @@ struct AccessoryCompactRow: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    .lineLimit(2)
 
                 if let category = categoryName {
                     Text(category)
