@@ -522,29 +522,9 @@ struct PosterShareView: View {
     }
 
     private func saveToAlbum() {
-        // 先检查权限
-        let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
-        switch status {
-        case .authorized, .limited:
-            performSave()
-        case .notDetermined:
-            PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
-                DispatchQueue.main.async {
-                    if newStatus == .authorized || newStatus == .limited {
-                        self.performSave()
-                    } else {
-                        self.saveResult = .failure("请在设置中允许访问相册")
-                    }
-                }
-            }
-        case .denied, .restricted:
-            saveResult = .failure("请在设置中允许访问相册")
-        @unknown default:
-            saveResult = .failure("未知错误")
-        }
-    }
-
-    private func performSave() {
+        // 直接调用，系统会自动处理权限请求弹窗
+        // 第一次使用时系统会弹出"允许访问相册"的权限弹窗
+        // 不需要手动调 PHPhotoLibrary.requestAuthorization（在 sheet 中会死锁）
         let saver = ImageSaver()
         saver.onSuccess = {
             DispatchQueue.main.async {
@@ -553,7 +533,11 @@ struct PosterShareView: View {
         }
         saver.onFailure = { error in
             DispatchQueue.main.async {
-                self.saveResult = .failure(error)
+                if error.contains("权限") || error.contains("denied") || error.contains("access") {
+                    self.saveResult = .failure("请在设置中允许访问相册")
+                } else {
+                    self.saveResult = .failure(error)
+                }
             }
         }
         saver.save(image: image)
