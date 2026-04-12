@@ -263,8 +263,8 @@ struct BundleEditView: View {
                 }
             }
             .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
             .background(Color.gray.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.customName ?? accessory?.name ?? "未知配件")
