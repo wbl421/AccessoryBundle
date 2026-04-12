@@ -264,11 +264,14 @@ struct BundlePosterView: View {
             VStack(spacing: 8) {
                 // 显示自定义 Logo 或默认图标
                 if let logoImage = appSettings.logoImage {
+                    // 海报中使用合适的尺寸（基于用户设置的比例）
+                    let posterWidth: CGFloat = min(60 * appSettings.imageScale, 80)
+                    let posterHeight: CGFloat = min(40 * appSettings.imageScale, 60)
                     Image(uiImage: logoImage)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 50 * appSettings.logoScale, height: 50 * appSettings.logoScale)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .frame(width: posterWidth, height: posterHeight)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 } else {
                     Image(systemName: "bag.fill")
                         .font(.system(size: 28))

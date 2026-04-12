@@ -9,73 +9,176 @@ struct LogoEditView: View {
     let initialImage: UIImage
 
     @State private var selectedImage: UIImage
-    @State private var scale: Double
+    @State private var containerWidth: Double
+    @State private var containerHeight: Double
+    @State private var imageScale: Double
+    @State private var bottomPadding: Double
+    @State private var showImagePicker = false
 
     init(settings: AppSettings, image: UIImage) {
         self.settings = settings
         self.initialImage = image
         self._selectedImage = State(initialValue: image)
-        self._scale = State(initialValue: settings.logoScale > 0 ? settings.logoScale : 1.0)
+        self._containerWidth = State(initialValue: settings.containerWidth)
+        self._containerHeight = State(initialValue: settings.containerHeight)
+        self._imageScale = State(initialValue: settings.imageScale)
+        self._bottomPadding = State(initialValue: settings.bottomPadding)
     }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 32) {
-                // Logo 预览
-                VStack(spacing: 16) {
-                    Image(uiImage: selectedImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 120 * scale, height: 120 * scale)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(.systemGray6))
-                        )
+            ScrollView {
+                VStack(spacing: 24) {
+                    // 预览区域
+                    VStack(spacing: 8) {
+                        Text("预览效果")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
-                    Text("调整 Logo 大小")
+                        // 预览容器
+                        VStack(spacing: bottomPadding) {
+                            Image(uiImage: selectedImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(
+                                    width: min(containerWidth * imageScale, containerWidth),
+                                    height: min(containerHeight * imageScale, containerHeight)
+                                )
+                                .frame(width: containerWidth, height: containerHeight)
+
+                            // 模拟下方标题
+                            Text("会员优享套餐")
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.primary)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                        .background(Color(.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
+                    }
+                    .padding(.top, 16)
+
+                    // 编辑控制
+                    VStack(spacing: 20) {
+                        // 容器宽度
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("容器宽度")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text("\(Int(containerWidth))")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            HStack(spacing: 12) {
+                                Text("100")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                Slider(value: $containerWidth, in: 100...350, step: 10)
+                                    .tint(.blue)
+                                Text("350")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+
+                        // 容器高度
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("容器高度")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text("\(Int(containerHeight))")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            HStack(spacing: 12) {
+                                Text("50")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                Slider(value: $containerHeight, in: 50...300, step: 10)
+                                    .tint(.blue)
+                                Text("300")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+
+                        // 图片缩放
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("图片缩放")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text("\(Int(imageScale * 100))%")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            HStack(spacing: 12) {
+                                Text("30%")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                Slider(value: $imageScale, in: 0.3...2.0, step: 0.1)
+                                    .tint(.blue)
+                                Text("200%")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+
+                        // 下边距
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("与标题距离")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text("\(Int(bottomPadding))")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+                            HStack(spacing: 12) {
+                                Text("0")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                Slider(value: $bottomPadding, in: 0...60, step: 5)
+                                    .tint(.blue)
+                                Text("60")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .background(Color(.systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    // 重新选择图片
+                    Button {
+                        showImagePicker = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "photo.on.rectangle")
+                            Text("重新选择图片")
+                        }
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 40)
-
-                Spacer()
-
-                // 缩放控制
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("大小")
-                            .font(.headline)
-                        Spacer()
-                        Text("\(Int(scale * 100))%")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
+                        .foregroundStyle(.blue)
                     }
-
-                    HStack(spacing: 16) {
-                        Text("小")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Slider(value: $scale, in: 0.5...2.0, step: 0.1)
-                            .tint(.blue)
-
-                        Text("大")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    .padding(.bottom, 20)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .padding(.horizontal, 20)
-
-                Spacer()
+                .padding(16)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("编辑 Logo")
+            .navigationTitle("编辑图片")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -88,12 +191,18 @@ struct LogoEditView: View {
                     .fontWeight(.semibold)
                 }
             }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(image: $selectedImage)
+            }
         }
     }
 
     private func saveAndDismiss() {
         settings.saveLogo(selectedImage)
-        settings.logoScale = scale
+        settings.containerWidth = containerWidth
+        settings.containerHeight = containerHeight
+        settings.imageScale = imageScale
+        settings.bottomPadding = bottomPadding
         dismiss()
     }
 }

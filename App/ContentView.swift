@@ -204,7 +204,7 @@ struct ContentView: View {
 
     // MARK: - Logo 区域（有 Logo 时始终显示）
     private var logoSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: appSettings.bottomPadding) {
             if let logoImage = appSettings.logoImage {
                 // 已有 logo
                 ZStack(alignment: .topTrailing) {
@@ -217,7 +217,11 @@ struct ContentView: View {
                             Image(uiImage: logoImage)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 140 * appSettings.logoScale, height: 140 * appSettings.logoScale)
+                                .frame(
+                                    width: min(appSettings.containerWidth * appSettings.imageScale, appSettings.containerWidth),
+                                    height: min(appSettings.containerHeight * appSettings.imageScale, appSettings.containerHeight)
+                                )
+                                .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
@@ -241,17 +245,21 @@ struct ContentView: View {
                         Image(uiImage: logoImage)
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 140 * appSettings.logoScale, height: 140 * appSettings.logoScale)
+                            .frame(
+                                width: min(appSettings.containerWidth * appSettings.imageScale, appSettings.containerWidth),
+                                height: min(appSettings.containerHeight * appSettings.imageScale, appSettings.containerHeight)
+                            )
+                            .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
-                .alert("删除 Logo", isPresented: $showDeleteLogoAlert) {
+                .alert("删除图片", isPresented: $showDeleteLogoAlert) {
                     Button("取消", role: .cancel) {}
                     Button("删除", role: .destructive) {
                         appSettings.deleteLogo()
                     }
                 } message: {
-                    Text("确定要删除已设置的 Logo 吗？")
+                    Text("确定要删除已设置的图片吗？")
                 }
             } else if isEditMode {
                 // 没有 logo 且编辑模式 - 显示上传占位符
@@ -262,11 +270,11 @@ struct ContentView: View {
                         Image(systemName: "photo.badge.plus")
                             .font(.system(size: 36))
                             .foregroundStyle(.secondary)
-                        Text("点击上传 Logo")
+                        Text("点击上传图片")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    .frame(width: 140, height: 140)
+                    .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
                             .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
