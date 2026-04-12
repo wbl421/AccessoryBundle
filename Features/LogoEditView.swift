@@ -29,27 +29,24 @@ struct LogoEditView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // 预览区域
+                    // 预览区域（可滚动查看大尺寸）
                     VStack(spacing: 8) {
-                        Text("预览效果")
+                        Text("预览效果（实际尺寸）")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        // 预览容器
+                        // 预览容器 - 使用固定尺寸显示实际效果
                         VStack(spacing: bottomPadding) {
-                            GeometryReader { geometry in
-                                Image(uiImage: selectedImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: geometry.size.width * imageScale, height: geometry.size.height * imageScale)
-                                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                            }
-                            .frame(width: min(containerWidth, 320), height: min(containerHeight, 200))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemGray6))
-                            )
+                            Image(uiImage: selectedImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: containerWidth * imageScale, height: containerHeight * imageScale)
+                                .frame(width: containerWidth, height: containerHeight)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.systemGray6))
+                                )
 
                             // 模拟下方标题
                             Text("会员优享套餐")
