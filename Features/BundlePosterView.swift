@@ -648,7 +648,7 @@ enum PosterTemplate: String, CaseIterable, Identifiable {
     case classic = "经典款"
     case simple = "简约款"
     case card = "卡片款"
-    case dark = "深色款"
+    case dark = "黑金款"
 
     var id: String { rawValue }
 
