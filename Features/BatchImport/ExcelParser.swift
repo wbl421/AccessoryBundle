@@ -450,7 +450,7 @@ class ExcelParser {
         // 1. 提取所有图片数据 (xl/media/ 目录)
         var imageDataList: [(path: String, data: Data)] = []
         for entry in archive {
-            if entry.path.hasPrefix("xl/media/") {
+            if entry.path.hasPrefix("xl/media/") && !entry.path.hasSuffix("/") {
                 var data = Data()
                 _ = try? archive.extract(entry) { chunk in
                     data.append(chunk)
@@ -468,63 +468,253 @@ class ExcelParser {
 
         guard !imageDataList.isEmpty else { return result }
 
-        // 2. 尝试通过 drawing XML 解析图片位置
+        // media path -> 图片Data 映射
+        var mediaMap: [String: Data] = [:]
+        for item in imageDataList {
+            mediaMap[item.path] = item.data
+        }
+
+        // 2. 优先尝试 WPS cellimages 方式（WPS专有，国内用户最常用）
+        let wpsResult = extractWPSCellImages(archive: archive, mediaMap: mediaMap)
+        if !wpsResult.isEmpty {
+            print("[ExcelParser] WPS cellimages 方式成功，映射 \(wpsResult.values.flatMap { $0.values }.count) 张图片")
+            for (row, cols) in wpsResult.sorted(by: { $0.key < $1.key }) {
+                print("[ExcelParser]   row \(row): cols \(cols.keys.sorted())")
+            }
+            return wpsResult
+        }
+
+        // 3. 尝试标准 drawing XML 方式（Excel 生成的文件）
+        let drawingResult = extractDrawingXMLImages(archive: archive, mediaMap: mediaMap, imageDataList: imageDataList)
+        if !drawingResult.isEmpty {
+            print("[ExcelParser] drawing XML 方式成功，映射 \(drawingResult.values.flatMap { $0.values }.count) 张图片")
+            for (row, cols) in drawingResult.sorted(by: { $0.key < $1.key }) {
+                print("[ExcelParser]   row \(row): cols \(cols.keys.sorted())")
+            }
+            return drawingResult
+        }
+
+        // 4. 最终 fallback：按图片文件名顺序智能分配
+        print("[ExcelParser] 所有方式失败，使用 fallback 分配策略")
+        fallbackImageAssignment(imageDataList: imageDataList, result: &result)
+        return result
+    }
+
+    // MARK: - WPS cellimages 方式
+
+    /// 提取 WPS 专有的 cellimages 图片（WPS 使用 _xlfn.DISPIMG 公式 + cellimages.xml）
+    private func extractWPSCellImages(archive: Archive, mediaMap: [String: Data]) -> [Int: [Int: UIImage]] {
+        var result: [Int: [Int: UIImage]] = [:]
+
+        // Step 1: 检查是否存在 cellimages.xml 和 cellimages.xml.rels
+        var cellImagesXML: String?
+        var cellImagesRelsXML: String?
+
+        for entry in archive {
+            if entry.path == "xl/cellimages.xml" {
+                var data = Data()
+                _ = try? archive.extract(entry) { chunk in data.append(chunk) }
+                cellImagesXML = String(data: data, encoding: .utf8)
+            } else if entry.path == "xl/_rels/cellimages.xml.rels" {
+                var data = Data()
+                _ = try? archive.extract(entry) { chunk in data.append(chunk) }
+                cellImagesRelsXML = String(data: data, encoding: .utf8)
+            }
+        }
+
+        guard let cellImagesXMLStr = cellImagesXML else {
+            print("[ExcelParser] WPS: 未找到 xl/cellimages.xml")
+            return result
+        }
+
+        print("[ExcelParser] WPS: 找到 cellimages.xml")
+
+        // Step 2: 解析 cellimages.xml.rels → rId → mediaPath
+        var cellImageRels: [String: String] = [:]
+        if let relsXML = cellImagesRelsXML {
+            cellImageRels = parseRelsXML(relsXML, basePath: "xl/")
+            print("[ExcelParser] WPS cellimages rels: \(cellImageRels)")
+        }
+
+        // Step 3: 解析 cellimages.xml → imageID → rId
+        // 格式: <etc:cellImage><xdr:pic><xdr:nvPicPr><xdr:cNvPr name="ID_xxx" .../>
+        //        <xdr:blipFill><a:blip r:embed="rId1"/></xdr:blipFill>
+        var imageIDToRId: [String: String] = [:]
+        let cellImagePattern = #"<etc:cellImage>(.*?)</etc:cellImage>"#
+        if let cellImageRegex = try? NSRegularExpression(pattern: cellImagePattern, options: [.dotMatchesLineSeparators]) {
+            let range = NSRange(cellImagesXMLStr.startIndex..., in: cellImagesXMLStr)
+            for match in cellImageRegex.matches(in: cellImagesXMLStr, range: range) {
+                guard let blockRange = Range(match.range(at: 1), in: cellImagesXMLStr) else { continue }
+                let block = String(cellImagesXMLStr[blockRange])
+
+                // 提取 cNvPr name 属性 (图片ID)
+                var imageID: String?
+                let namePattern = #"name="([^"]+)""#
+                if let nameRegex = try? NSRegularExpression(pattern: namePattern, options: []),
+                   let nameMatch = nameRegex.firstMatch(in: block, range: NSRange(block.startIndex..., in: block)),
+                   let nameRange = Range(nameMatch.range(at: 1), in: block) {
+                    imageID = String(block[nameRange])
+                }
+
+                // 提取 blip r:embed (rId)
+                var rId: String?
+                let embedPattern = #"r:embed="([^"]+)""#
+                if let embedRegex = try? NSRegularExpression(pattern: embedPattern, options: []),
+                   let embedMatch = embedRegex.firstMatch(in: block, range: NSRange(block.startIndex..., in: block)),
+                   let embedRange = Range(embedMatch.range(at: 1), in: block) {
+                    rId = String(block[embedRange])
+                }
+
+                if let imageID = imageID, let rId = rId {
+                    imageIDToRId[imageID] = rId
+                    print("[ExcelParser] WPS: imageID=\(imageID) → rId=\(rId)")
+                }
+            }
+        }
+
+        // Step 4: 构建 imageID → imageData 映射
+        var imageIDToData: [String: Data] = [:]
+        for (imageID, rId) in imageIDToRId {
+            if let mediaPath = cellImageRels[rId], let imageData = mediaMap[mediaPath] {
+                imageIDToData[imageID] = imageData
+                print("[ExcelParser] WPS: imageID=\(imageID) → rId=\(rId) → \(mediaPath) (\(imageData.count) bytes)")
+            } else if let mediaPath = cellImageRels[rId] {
+                // 尝试路径变体
+                let variants = generatePathVariants(mediaPath)
+                for variant in variants {
+                    if let imageData = mediaMap[variant] {
+                        imageIDToData[imageID] = imageData
+                        print("[ExcelParser] WPS: imageID=\(imageID) → rId=\(rId) → \(variant) (\(imageData.count) bytes) [变体]")
+                        break
+                    }
+                }
+            } else {
+                print("[ExcelParser] WPS: imageID=\(imageID) → rId=\(rId) → 未找到media路径")
+            }
+        }
+
+        // Step 5: 从 worksheet XML 中解析 DISPIMG 公式，获取 (row, col) → imageID
+        let sheetPath = findFirstSheetPath(in: archive)
+        var sheetXML: String?
+        for entry in archive {
+            if entry.path == sheetPath || (sheetPath.isEmpty && entry.path.hasPrefix("xl/worksheets/sheet") && entry.path.hasSuffix(".xml") && !entry.path.contains("_rels")) {
+                var data = Data()
+                _ = try? archive.extract(entry) { chunk in data.append(chunk) }
+                sheetXML = String(data: data, encoding: .utf8)
+                break
+            }
+        }
+
+        guard let sheetXMLStr = sheetXML else {
+            print("[ExcelParser] WPS: 未找到 worksheet XML")
+            return result
+        }
+
+        // 解析 DISPIMG 公式
+        let dispimgMappings = parseDISPIMGFormulas(sheetXMLStr)
+        print("[ExcelParser] WPS: 找到 \(dispimgMappings.count) 个 DISPIMG 公式")
+        for mapping in dispimgMappings {
+            print("[ExcelParser] WPS:   row=\(mapping.row), col=\(mapping.col), imageID=\(mapping.imageID)")
+        }
+
+        // Step 6: 组合 (row, col, imageID) + (imageID, imageData) → 最终结果
+        for mapping in dispimgMappings {
+            if let imageData = imageIDToData[mapping.imageID], let image = UIImage(data: imageData) {
+                if result[mapping.row] == nil { result[mapping.row] = [:] }
+                result[mapping.row]?[mapping.col] = image
+                print("[ExcelParser] WPS: 映射 row=\(mapping.row), col=\(mapping.col)")
+            } else {
+                print("[ExcelParser] WPS: 无法映射 row=\(mapping.row), col=\(mapping.col), imageID=\(mapping.imageID)")
+            }
+        }
+
+        return result
+    }
+
+    /// 从 worksheet XML 中解析 _xlfn.DISPIMG 公式，返回 (row, col, imageID)
+    private func parseDISPIMGFormulas(_ xml: String) -> [(row: Int, col: Int, imageID: String)] {
+        var mappings: [(row: Int, col: Int, imageID: String)] = []
+
+        // 提取所有 <row>...</row> 块
+        let rowPattern = #"<row[^>]*>(.*?)</row>"#
+        guard let rowRegex = try? NSRegularExpression(pattern: rowPattern, options: [.dotMatchesLineSeparators]) else { return [] }
+        let range = NSRange(xml.startIndex..., in: xml)
+
+        for rowMatch in rowRegex.matches(in: xml, range: range) {
+            guard let rowBlockRange = Range(rowMatch.range(at: 1), in: xml) else { continue }
+            let rowBlock = String(xml[rowBlockRange])
+
+            // 提取所有 <c ...>...</c> 单元格
+            let cellPattern = #"<c\s+([^>]*?)>(.*?)</c>"#
+            guard let cellRegex = try? NSRegularExpression(pattern: cellPattern, options: [.dotMatchesLineSeparators]) else { continue }
+            let cellRange = NSRange(rowBlock.startIndex..., in: rowBlock)
+
+            for cellMatch in cellRegex.matches(in: rowBlock, range: cellRange) {
+                guard let attrsRange = Range(cellMatch.range(at: 1), in: rowBlock),
+                      let contentRange = Range(cellMatch.range(at: 2), in: rowBlock) else { continue }
+                let attrs = String(rowBlock[attrsRange])
+                let content = String(rowBlock[contentRange])
+
+                // 检查是否包含 DISPIMG 公式
+                guard content.contains("DISPIMG") else { continue }
+
+                // 提取单元格位置 r="A2"
+                var colIndex: Int?
+                var rowNumber: Int?
+                let refPattern = #"r="([A-Z]+)(\d+)""#
+                if let refRegex = try? NSRegularExpression(pattern: refPattern, options: []),
+                   let refMatch = refRegex.firstMatch(in: attrs, range: NSRange(attrs.startIndex..., in: attrs)) {
+                    if let colRange = Range(refMatch.range(at: 1), in: attrs) {
+                        colIndex = columnLetterToInt(String(attrs[colRange]))
+                    }
+                    if let rowRange = Range(refMatch.range(at: 2), in: attrs) {
+                        rowNumber = Int(String(attrs[rowRange]))
+                    }
+                }
+
+                guard let col = colIndex, let row = rowNumber else { continue }
+
+                // 提取 imageID: DISPIMG("ID_xxx",1) 或 DISPIMG("ID_xxx")
+                let dispimgPattern = #"DISPIMG\(&quot;([^&]+)&quot;"#
+                if let dispimgRegex = try? NSRegularExpression(pattern: dispimgPattern, options: []),
+                   let dispimgMatch = dispimgRegex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+                   let idRange = Range(dispimgMatch.range(at: 1), in: content) {
+                    let imageID = String(content[idRange])
+                    mappings.append((row: row, col: col, imageID: imageID))
+                } else {
+                    // 也尝试非转义的引号
+                    let dispimgPattern2 = #"DISPIMG\("([^"]+)""#
+                    if let dispimgRegex2 = try? NSRegularExpression(pattern: dispimgPattern2, options: []),
+                       let dispimgMatch2 = dispimgRegex2.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+                       let idRange2 = Range(dispimgMatch2.range(at: 1), in: content) {
+                        let imageID = String(content[idRange2])
+                        mappings.append((row: row, col: col, imageID: imageID))
+                    }
+                }
+            }
+        }
+
+        return mappings
+    }
+
+    // MARK: - 标准 Drawing XML 方式
+
+    /// 提取标准 drawing XML 中的图片（Excel 生成的文件）
+    private func extractDrawingXMLImages(archive: Archive, mediaMap: [String: Data], imageDataList: [(path: String, data: Data)]) -> [Int: [Int: UIImage]] {
+        var result: [Int: [Int: UIImage]] = [:]
         var imagePositions: [(row: Int, col: Int, imageData: Data)] = []
 
         // 解析 drawing 关系文件（每个 drawing XML 有自己的 rels 文件）
-        // 注意：不同 drawing 的 rId 可能重复，需要按 drawing 文件分组
-        var drawingRelsMap: [String: [String: String]] = [:] // drawingFileName -> [rId -> mediaPath]
+        var drawingRelsMap: [String: [String: String]] = [:]
         for entry in archive {
             if entry.path.hasPrefix("xl/drawings/_rels/") && entry.path.hasSuffix(".rels") {
                 var data = Data()
-                _ = try? archive.extract(entry) { chunk in
-                    data.append(chunk)
-                }
+                _ = try? archive.extract(entry) { chunk in data.append(chunk) }
                 if let xmlStr = String(data: data, encoding: .utf8) {
-                    // 从路径提取 drawing 文件名: xl/drawings/_rels/drawing1.xml.rels → drawing1.xml
                     let pathComponents = entry.path.split(separator: "/")
                     let relsFileName = String(pathComponents.last ?? "")
                     let drawingFileName = relsFileName.replacingOccurrences(of: ".rels", with: "")
-
-                    var rels: [String: String] = [:]
-
-                    // 逐个解析 <Relationship> 元素，独立提取 Id 和 Target
-                    let relPattern = #"<Relationship\s+[^>]*/?>"#
-                    if let relRegex = try? NSRegularExpression(pattern: relPattern, options: [.dotMatchesLineSeparators]) {
-                        let range = NSRange(xmlStr.startIndex..., in: xmlStr)
-                        for relMatch in relRegex.matches(in: xmlStr, range: range) {
-                            guard let relRange = Range(relMatch.range(at: 0), in: xmlStr) else { continue }
-                            let relElement = String(xmlStr[relRange])
-
-                            // 独立提取 Id 和 Target，不依赖属性顺序
-                            var id: String?
-                            var target: String?
-
-                            let idPattern = #"Id="([^"]+)""#
-                            if let idRegex = try? NSRegularExpression(pattern: idPattern, options: []),
-                               let idMatch = idRegex.firstMatch(in: relElement, range: NSRange(relElement.startIndex..., in: relElement)),
-                               let idRange = Range(idMatch.range(at: 1), in: relElement) {
-                                id = String(relElement[idRange])
-                            }
-
-                            let targetPattern = #"Target="([^"]+)""#
-                            if let targetRegex = try? NSRegularExpression(pattern: targetPattern, options: []),
-                               let targetMatch = targetRegex.firstMatch(in: relElement, range: NSRange(relElement.startIndex..., in: relElement)),
-                               let targetRange = Range(targetMatch.range(at: 1), in: relElement) {
-                                target = String(relElement[targetRange])
-                            }
-
-                            if let id = id, let target = target {
-                                // 只保存图片类型的 relationship（Target 指向 media 目录）
-                                if target.contains("media") || target.contains("image") {
-                                    let resolvedPath = resolveRelativePath(target, basePath: "xl/drawings/")
-                                    rels[id] = resolvedPath
-                                    print("[ExcelParser]   rels: \(id) → \(target) → \(resolvedPath)")
-                                }
-                            }
-                        }
-                    }
-
+                    let rels = parseRelsXML(xmlStr, basePath: "xl/drawings/")
                     if !rels.isEmpty {
                         drawingRelsMap[drawingFileName] = rels
                     }
@@ -532,66 +722,78 @@ class ExcelParser {
             }
         }
 
-        print("[ExcelParser] drawingRelsMap: \(drawingRelsMap)")
-
-        // media path -> 图片Data 映射
-        var mediaMap: [String: Data] = [:]
-        for item in imageDataList {
-            mediaMap[item.path] = item.data
+        guard !drawingRelsMap.isEmpty else {
+            print("[ExcelParser] Drawing: 未找到 drawing rels 文件")
+            return result
         }
+
+        print("[ExcelParser] Drawing rels: \(drawingRelsMap)")
 
         // 解析 drawing XML
         for entry in archive {
             if entry.path.hasPrefix("xl/drawings/") && entry.path.hasSuffix(".xml") && !entry.path.contains("_rels") {
                 var data = Data()
-                _ = try? archive.extract(entry) { chunk in
-                    data.append(chunk)
-                }
+                _ = try? archive.extract(entry) { chunk in data.append(chunk) }
                 if let xmlStr = String(data: data, encoding: .utf8) {
-                    // 提取 drawing 文件名
                     let pathComponents = entry.path.split(separator: "/")
                     let drawingFileName = String(pathComponents.last ?? "")
-
-                    // 使用该 drawing 对应的 rels
                     let imageRels = drawingRelsMap[drawingFileName] ?? [:]
-                    print("[ExcelParser] 解析 drawing: \(drawingFileName), rels数: \(imageRels.count)")
-
+                    print("[ExcelParser] Drawing: 解析 \(drawingFileName), rels数: \(imageRels.count)")
                     parseDrawingXML(xmlStr, imageRels: imageRels, mediaMap: mediaMap, imageDataList: imageDataList, result: &imagePositions)
                 }
             }
         }
 
-        print("[ExcelParser] drawing XML 解析得到 \(imagePositions.count) 个图片位置")
+        print("[ExcelParser] Drawing: 解析得到 \(imagePositions.count) 个图片位置")
+
+        // 映射到结果（drawing XML 中 row/col 是 0-based，需 +1）
         for pos in imagePositions {
-            print("[ExcelParser]   - row=\(pos.row)(excelRow=\(pos.row+1)), col=\(pos.col), imageSize=\(pos.imageData.count)")
-        }
-
-        // 3. 映射图片到单元格
-        if !imagePositions.isEmpty {
-            // drawing XML 解析成功，按行列位置映射
-            // drawing XML 中 row/col 是 0-based，excelRow 是 1-based，需要 +1
-            for pos in imagePositions {
-                if let image = UIImage(data: pos.imageData) {
-                    let excelRow = pos.row + 1
-                    if result[excelRow] == nil { result[excelRow] = [:] }
-                    result[excelRow]?[pos.col] = image
-                    print("[ExcelParser]   映射: excelRow=\(excelRow), col=\(pos.col)")
-                }
+            if let image = UIImage(data: pos.imageData) {
+                let excelRow = pos.row + 1
+                if result[excelRow] == nil { result[excelRow] = [:] }
+                result[excelRow]?[pos.col] = image
             }
-        } else {
-            // drawing XML 解析失败，尝试按图片文件名顺序智能分配
-            // 策略：根据已解析的数据行数，均匀分配图片
-            print("[ExcelParser] drawing XML 解析失败，使用 fallback 分配策略")
-            fallbackImageAssignment(imageDataList: imageDataList, result: &result)
-        }
-
-        // 打印最终结果
-        print("[ExcelParser] 最终图片映射结果:")
-        for (row, cols) in result.sorted(by: { $0.key < $1.key }) {
-            print("[ExcelParser]   row \(row): \(cols.keys.sorted())")
         }
 
         return result
+    }
+
+    /// 通用解析 .rels 文件，返回 [Id → resolvedMediaPath]
+    private func parseRelsXML(_ xmlStr: String, basePath: String) -> [String: String] {
+        var rels: [String: String] = [:]
+        let relPattern = #"<Relationship\s+[^>]*/?>"#
+        guard let relRegex = try? NSRegularExpression(pattern: relPattern, options: [.dotMatchesLineSeparators]) else { return rels }
+        let range = NSRange(xmlStr.startIndex..., in: xmlStr)
+
+        for relMatch in relRegex.matches(in: xmlStr, range: range) {
+            guard let relRange = Range(relMatch.range(at: 0), in: xmlStr) else { continue }
+            let relElement = String(xmlStr[relRange])
+
+            var id: String?
+            var target: String?
+
+            let idPattern = #"Id="([^"]+)""#
+            if let idRegex = try? NSRegularExpression(pattern: idPattern, options: []),
+               let idMatch = idRegex.firstMatch(in: relElement, range: NSRange(relElement.startIndex..., in: relElement)),
+               let idRange = Range(idMatch.range(at: 1), in: relElement) {
+                id = String(relElement[idRange])
+            }
+
+            let targetPattern = #"Target="([^"]+)""#
+            if let targetRegex = try? NSRegularExpression(pattern: targetPattern, options: []),
+               let targetMatch = targetRegex.firstMatch(in: relElement, range: NSRange(relElement.startIndex..., in: relElement)),
+               let targetRange = Range(targetMatch.range(at: 1), in: relElement) {
+                target = String(relElement[targetRange])
+            }
+
+            if let id = id, let target = target {
+                if target.contains("media") || target.contains("image") {
+                    let resolvedPath = resolveRelativePath(target, basePath: basePath)
+                    rels[id] = resolvedPath
+                }
+            }
+        }
+        return rels
     }
 
     /// Fallback: 当 drawing XML 解析失败时，按图片文件名排序后智能分配
