@@ -204,81 +204,88 @@ struct ContentView: View {
 
     // MARK: - Logo 区域（有 Logo 时始终显示）
     private var logoSection: some View {
-        VStack(spacing: appSettings.bottomPadding) {
-            if let logoImage = appSettings.logoImage {
-                // 已有图片
-                ZStack(alignment: .topTrailing) {
-                    if isEditMode {
-                        // 编辑模式：可点击重新编辑
-                        Button {
-                            selectedLogoImage = logoImage
-                            showLogoEdit = true
-                        } label: {
+        GeometryReader { geometry in
+            let availableWidth = geometry.size.width
+            let actualWidth = min(appSettings.containerWidth, availableWidth)
+
+            VStack(spacing: appSettings.bottomPadding) {
+                if let logoImage = appSettings.logoImage {
+                    // 已有图片
+                    ZStack(alignment: .topTrailing) {
+                        if isEditMode {
+                            // 编辑模式：可点击重新编辑
+                            Button {
+                                selectedLogoImage = logoImage
+                                showLogoEdit = true
+                            } label: {
+                                Image(uiImage: logoImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: actualWidth * appSettings.imageScale, height: appSettings.containerHeight * appSettings.imageScale)
+                                    .frame(width: actualWidth, height: appSettings.containerHeight)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(.systemGray6))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+
+                            // 删除按钮（仅编辑模式显示）
+                            Button {
+                                showDeleteLogoAlert = true
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.red)
+                                    .background(Circle().fill(.white))
+                            }
+                            .offset(x: 8, y: -8)
+                        } else {
+                            // 非编辑模式：只显示图片
                             Image(uiImage: logoImage)
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: appSettings.containerWidth * appSettings.imageScale, height: appSettings.containerHeight * appSettings.imageScale)
-                                .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
+                                .frame(width: actualWidth * appSettings.imageScale, height: appSettings.containerHeight * appSettings.imageScale)
+                                .frame(width: actualWidth, height: appSettings.containerHeight)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.systemGray6))
-                                )
                         }
-                        .buttonStyle(.plain)
-
-                        // 删除按钮（仅编辑模式显示）
-                        Button {
-                            showDeleteLogoAlert = true
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(.red)
-                                .background(Circle().fill(.white))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)  // 水平居中
+                    .alert("删除图片", isPresented: $showDeleteLogoAlert) {
+                        Button("取消", role: .cancel) {}
+                        Button("删除", role: .destructive) {
+                            appSettings.deleteLogo()
                         }
-                        .offset(x: 8, y: -8)
-                    } else {
-                        // 非编辑模式：只显示图片
-                        Image(uiImage: logoImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: appSettings.containerWidth * appSettings.imageScale, height: appSettings.containerHeight * appSettings.imageScale)
-                            .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    } message: {
+                        Text("确定要删除已设置的图片吗？")
                     }
-                }
-                .frame(maxWidth: .infinity)  // 水平居中
-                .alert("删除图片", isPresented: $showDeleteLogoAlert) {
-                    Button("取消", role: .cancel) {}
-                    Button("删除", role: .destructive) {
-                        appSettings.deleteLogo()
+                } else if isEditMode {
+                    // 没有 logo 且编辑模式 - 显示上传占位符
+                    Button {
+                        showLogoPicker = true
+                    } label: {
+                        VStack(spacing: 8) {
+                            Image(systemName: "photo.badge.plus")
+                                .font(.system(size: 36))
+                                .foregroundStyle(.secondary)
+                            Text("点击上传图片")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(width: actualWidth, height: appSettings.containerHeight)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
+                                .foregroundStyle(.tertiary)
+                        )
                     }
-                } message: {
-                    Text("确定要删除已设置的图片吗？")
+                    .buttonStyle(.plain)
                 }
-            } else if isEditMode {
-                // 没有 logo 且编辑模式 - 显示上传占位符
-                Button {
-                    showLogoPicker = true
-                } label: {
-                    VStack(spacing: 8) {
-                        Image(systemName: "photo.badge.plus")
-                            .font(.system(size: 36))
-                            .foregroundStyle(.secondary)
-                        Text("点击上传图片")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
-                            .foregroundStyle(.tertiary)
-                    )
-                }
-                .buttonStyle(.plain)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
         }
+        .frame(height: appSettings.containerHeight + appSettings.bottomPadding + 20)
         .sheet(isPresented: $showLogoPicker) {
             ImagePicker(image: Binding(
                 get: { selectedLogoImage ?? UIImage() },
