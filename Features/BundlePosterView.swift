@@ -262,7 +262,8 @@ struct PosterStyleSelectView: View {
     // MARK: - 缩略图
     @ViewBuilder
     private func posterThumbnail(path: String?) -> some View {
-        Group {
+        ZStack {
+            Color(.systemGray6)
             if let path = path, let image = ImageStorage.shared.loadImage(filename: path) {
                 Image(uiImage: image)
                     .resizable()
@@ -275,7 +276,6 @@ struct PosterStyleSelectView: View {
         }
         .frame(width: 50, height: 50)
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .background(Color(.systemGray6))
     }
 
     // MARK: - 生成海报

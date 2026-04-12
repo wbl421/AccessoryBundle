@@ -767,7 +767,8 @@ struct StyleCard: View {
         Button(action: onTap) {
             VStack(spacing: 10) {
                 // 缩略图
-                Group {
+                ZStack {
+                    Color(.systemGray6)
                     if let imagePath = detail.displayImagePath,
                        let image = ImageStorage.shared.loadImage(filename: imagePath) {
                         Image(uiImage: image)
@@ -781,7 +782,6 @@ struct StyleCard: View {
                 }
                 .frame(width: 120, height: 120)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .background(Color(.systemGray6))
 
                 // 名称
                 Text(detail.displayName)
