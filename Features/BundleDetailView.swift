@@ -183,7 +183,22 @@ struct BundleDetailView: View {
             }
             .padding(.horizontal, 4)
 
-            ForEach(Array(groups.enumerated()), id: \.element.id) { idx, group in
+            if groups.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "box.stack")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.secondary)
+                    Text("暂无配件")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("点击右上角编辑按钮添加配件")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                ForEach(Array(groups.enumerated()), id: \.element.id) { idx, group in
                 DraggableAccessoryGroupRow(
                     group: group,
                     index: idx,
@@ -240,6 +255,7 @@ struct BundleDetailView: View {
                         showDeleteAlert = true
                     }
                 )
+            }
             }
         }
     }
