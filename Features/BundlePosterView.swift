@@ -19,8 +19,25 @@ struct PosterStyleSelectView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     if let data = bundleData {
-                        ForEach(data.groups) { group in
-                            groupSelectionCard(group: group)
+                        if data.groups.isEmpty {
+                            // 空状态
+                            VStack(spacing: 16) {
+                                Image(systemName: "bag")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(.secondary)
+                                Text("套餐暂无配件")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                                Text("请先添加配件后再生成海报")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 100)
+                        } else {
+                            ForEach(data.groups) { group in
+                                groupSelectionCard(group: group)
+                            }
                         }
                     }
                 }
@@ -38,6 +55,7 @@ struct PosterStyleSelectView: View {
                         generateAndShare()
                     }
                     .fontWeight(.semibold)
+                    .disabled(bundleData?.groups.isEmpty ?? true)
                 }
             }
             .sheet(isPresented: $showPosterPreview) {
