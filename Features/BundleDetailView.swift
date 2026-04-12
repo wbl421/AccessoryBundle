@@ -17,6 +17,7 @@ struct BundleDetailView: View {
     let bundleId: UUID
     @EnvironmentObject var dataManager: DataManager
     @State private var showingEdit = false
+    @State private var showingPoster = false
     @State private var detailToDisplay: DetailDisplayData?
     @State private var styleSelectData: StyleSelectData?
     @State private var dragItem: BundleAccessoryGroup?
@@ -56,6 +57,9 @@ struct BundleDetailView: View {
                         Text(isEditMode ? "完成" : "编辑")
                             .fontWeight(.medium)
                     }
+                    Button { showingPoster = true } label: {
+                        Image(systemName: "photo.on.rectangle.angled")
+                    }
                     Button { showingEdit = true } label: {
                         Image(systemName: "pencil")
                     }
@@ -66,6 +70,10 @@ struct BundleDetailView: View {
             if let data = bundleData {
                 BundleEditView(categoryId: data.bundle.categoryId, bundle: data.bundle)
             }
+        }
+        .sheet(isPresented: $showingPoster) {
+            PosterStyleSelectView(bundleId: bundleId)
+                .environmentObject(dataManager)
         }
         .sheet(item: $detailToDisplay) { data in
             AccessoryDetailPopupNew(accessoryId: data.accessoryId, detail: data.detail)
