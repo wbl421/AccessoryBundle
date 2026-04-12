@@ -10,6 +10,9 @@ struct PosterStyleSelectView: View {
     // 每个分组选中的款式 index
     @State private var selectedIndices: [UUID: Int] = [:]
 
+    // 选中的海报模板
+    @State private var selectedTemplate: PosterTemplate = .classic
+
     private var bundleData: (bundle: Bundle, groups: [BundleAccessoryGroup])? {
         dataManager.bundleWithAccessoryGroups(for: bundleId)
     }
@@ -35,6 +38,9 @@ struct PosterStyleSelectView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 100)
                         } else {
+                            // 模板选择
+                            templateSelectionSection
+
                             ForEach(data.groups) { group in
                                 groupSelectionCard(group: group)
                             }
@@ -80,6 +86,82 @@ struct PosterStyleSelectView: View {
                 }
             }
         }
+    }
+
+    // MARK: - 模板选择区域
+    private var templateSelectionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("海报模板")
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+            HStack(spacing: 12) {
+                ForEach(PosterTemplate.allCases) { template in
+                    Button {
+                        selectedTemplate = template
+                    } label: {
+                        VStack(spacing: 8) {
+                            // 模板预览缩略图
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(selectedTemplate == template ? Color.red.opacity(0.1) : Color(.systemGray6))
+                                .frame(width: 80, height: 60)
+                                .overlay(
+                                    VStack(spacing: 4) {
+                                        if template == .classic {
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(Color.red.opacity(0.8))
+                                                .frame(height: 16)
+                                            HStack(spacing: 4) {
+                                                RoundedRectangle(cornerRadius: 2)
+                                                    .fill(Color.gray.opacity(0.3))
+                                                RoundedRectangle(cornerRadius: 2)
+                                                    .fill(Color.gray.opacity(0.3))
+                                            }
+                                        } else if template == .simple {
+                                            VStack(spacing: 4) {
+                                                Rectangle()
+                                                    .fill(Color.gray.opacity(0.3))
+                                                    .frame(height: 8)
+                                                Rectangle()
+                                                    .fill(Color.gray.opacity(0.2))
+                                                    .frame(height: 8)
+                                            }
+                                            .padding(4)
+                                        } else {
+                                            VStack(spacing: 4) {
+                                                RoundedRectangle(cornerRadius: 2)
+                                                    .fill(Color.blue.opacity(0.6))
+                                                    .frame(height: 20)
+                                                HStack(spacing: 4) {
+                                                    RoundedRectangle(cornerRadius: 2)
+                                                        .fill(Color.gray.opacity(0.2))
+                                                    RoundedRectangle(cornerRadius: 2)
+                                                        .fill(Color.gray.opacity(0.2))
+                                                }
+                                            }
+                                            .padding(4)
+                                        }
+                                    }
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(selectedTemplate == template ? Color.red : Color.clear, lineWidth: 2)
+                                )
+
+                            Text(template.rawValue)
+                                .font(.caption)
+                                .fontWeight(selectedTemplate == template ? .semibold : .regular)
+                                .foregroundStyle(selectedTemplate == template ? .red : .primary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - 分组选择卡片
@@ -212,7 +294,8 @@ struct PosterStyleSelectView: View {
 
         // 延迟渲染，确保 sheet 已打开
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            let posterView = BundlePosterView(
+            let posterView = createPosterView(
+                template: selectedTemplate,
                 bundleName: data.bundle.name,
                 originalPrice: originalPrice,
                 bundlePrice: data.bundle.price,
@@ -541,6 +624,262 @@ class ImageSaver: NSObject {
         } else {
             onSuccess?()
         }
+    }
+}
+
+// MARK: - 海报模板类型
+enum PosterTemplate: String, CaseIterable, Identifiable {
+    case classic = "经典款"
+    case simple = "简约款"
+    case card = "卡片款"
+
+    var id: String { rawValue }
+
+    var description: String {
+        switch self {
+        case .classic: return "红色渐变背景，两列网格展示"
+        case .simple: return "白色简约，列表排列"
+        case .card: return "卡片风格，大图展示"
+        }
+    }
+}
+
+// MARK: - 海报模板2：简约款
+struct BundlePosterViewSimple: View {
+    let bundleName: String
+    let originalPrice: Int
+    let bundlePrice: Int
+    let accessories: [PosterAccessoryItem]
+
+    private var savings: Int { originalPrice - bundlePrice }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 顶部标题
+            VStack(spacing: 12) {
+                Text(bundleName)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(.black)
+
+                HStack(spacing: 24) {
+                    VStack(spacing: 4) {
+                        Text("套餐价")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.gray)
+                        Text("¥\(bundlePrice)")
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundStyle(.red)
+                    }
+
+                    if savings > 0 {
+                        VStack(spacing: 4) {
+                            Text("立省")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.gray)
+                            Text("¥\(savings)")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundStyle(Color(red: 0.2, green: 0.7, blue: 0.3))
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
+            .background(Color.white)
+
+            // 分割线
+            Rectangle()
+                .fill(Color.gray.opacity(0.15))
+                .frame(height: 1)
+
+            // 配件列表
+            VStack(spacing: 0) {
+                ForEach(Array(accessories.enumerated()), id: \.offset) { index, item in
+                    HStack(spacing: 12) {
+                        // 序号
+                        Text("\(index + 1)")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 24, height: 24)
+                            .background(Color.red)
+                            .clipShape(Circle())
+
+                        // 图片
+                        Group {
+                            if let path = item.imagePath, let image = ImageStorage.shared.loadImage(filename: path) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                Color.gray.opacity(0.2)
+                            }
+                        }
+                        .frame(width: 60, height: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                        // 信息
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.categoryName)
+                                .font(.system(size: 12))
+                                .foregroundStyle(.gray)
+                            Text(item.displayName)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(.black)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
+                        Text("¥\(item.price)")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.red)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+
+                    if index < accessories.count - 1 {
+                        Divider().padding(.horizontal, 20)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .frame(width: 375)
+        .background(Color.white)
+    }
+}
+
+// MARK: - 海报模板3：卡片款
+struct BundlePosterViewCard: View {
+    let bundleName: String
+    let originalPrice: Int
+    let bundlePrice: Int
+    let accessories: [PosterAccessoryItem]
+
+    private var savings: Int { originalPrice - bundlePrice }
+    private var discount: Double { originalPrice > 0 ? Double(bundlePrice) / Double(originalPrice) : 1.0 }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 顶部大卡片
+            ZStack {
+                LinearGradient(
+                    colors: [Color(red: 0.2, green: 0.6, blue: 1.0), Color(red: 0.4, green: 0.3, blue: 0.9)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                VStack(spacing: 16) {
+                    Text(bundleName)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.white)
+
+                    Text("¥\(bundlePrice)")
+                        .font(.system(size: 48, weight: .bold))
+                        .foregroundStyle(.white)
+
+                    if savings > 0 {
+                        HStack(spacing: 8) {
+                            Text("原价 ¥\(originalPrice)")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.white.opacity(0.7))
+                                .strikethrough()
+                            Text("省¥\(savings)")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(red: 1.0, green: 0.8, blue: 0.0))
+                        }
+                    }
+                }
+                .padding(.vertical, 30)
+            }
+
+            // 配件大卡片列表
+            VStack(spacing: 12) {
+                ForEach(Array(accessories.enumerated()), id: \.offset) { index, item in
+                    HStack(spacing: 16) {
+                        // 大图
+                        Group {
+                            if let path = item.imagePath, let image = ImageStorage.shared.loadImage(filename: path) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                Color.gray.opacity(0.2)
+                            }
+                        }
+                        .frame(width: 100, height: 100)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                        // 信息
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("\(index + 1)")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 20, height: 20)
+                                    .background(Color(red: 0.2, green: 0.6, blue: 1.0))
+                                    .clipShape(Circle())
+
+                                Text(item.categoryName)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.gray)
+                            }
+
+                            Text(item.displayName)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.black)
+                                .lineLimit(2)
+
+                            Text("¥\(item.price)")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(Color(red: 1.0, green: 0.3, blue: 0.3))
+                        }
+
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                }
+            }
+            .padding(16)
+        }
+        .frame(width: 375)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.98))
+    }
+}
+
+// MARK: - 海报工厂方法
+func createPosterView(
+    template: PosterTemplate,
+    bundleName: String,
+    originalPrice: Int,
+    bundlePrice: Int,
+    accessories: [PosterAccessoryItem]
+) -> AnyView {
+    switch template {
+    case .classic:
+        return AnyView(BundlePosterView(
+            bundleName: bundleName,
+            originalPrice: originalPrice,
+            bundlePrice: bundlePrice,
+            accessories: accessories
+        ))
+    case .simple:
+        return AnyView(BundlePosterViewSimple(
+            bundleName: bundleName,
+            originalPrice: originalPrice,
+            bundlePrice: bundlePrice,
+            accessories: accessories
+        ))
+    case .card:
+        return AnyView(BundlePosterViewCard(
+            bundleName: bundleName,
+            originalPrice: originalPrice,
+            bundlePrice: bundlePrice,
+            accessories: accessories
+        ))
     }
 }
 
