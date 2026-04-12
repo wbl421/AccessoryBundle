@@ -450,7 +450,8 @@ struct AccessoryPickerSheet: View {
                                 toggleAccessory(accessory)
                             } label: {
                                 HStack {
-                                    Group {
+                                    ZStack {
+                                        Color.gray.opacity(0.1)
                                         if let imagePath = accessory.thumbnailPaths.first,
                                            let image = ImageStorage.shared.loadImage(filename: imagePath) {
                                             Image(uiImage: image)
@@ -464,7 +465,6 @@ struct AccessoryPickerSheet: View {
                                     }
                                     .frame(width: 50, height: 50)
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    .background(Color.gray.opacity(0.1))
 
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(accessory.name)

@@ -424,8 +424,9 @@ struct AccessoryGroupRow: View {
                     .foregroundStyle(.red)
                     .frame(width: 44, height: 44)
             }
-            
-            Group {
+
+            ZStack {
+                Color.gray.opacity(0.1)
                 if let image = displayImage {
                     Image(uiImage: image)
                         .resizable()
@@ -438,7 +439,6 @@ struct AccessoryGroupRow: View {
             }
             .frame(width: 50, height: 50)
             .clipShape(RoundedRectangle(cornerRadius: 8))
-            .background(Color.gray.opacity(0.1))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(categoryName)
