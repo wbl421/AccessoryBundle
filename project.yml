@@ -23,6 +23,7 @@ targets:
       path: Info.plist
       properties:
         UILaunchScreen: {}
+        NSPhotoLibraryAddUsageDescription: "需要访问相册以保存海报图片"
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UISupportedInterfaceOrientations~ipad:

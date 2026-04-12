@@ -1,4 +1,5 @@
 import SwiftUI
+import Photos
 
 // MARK: - 海报入口：配件款式选择
 struct PosterStyleSelectView: View {
@@ -418,6 +419,9 @@ struct BundlePosterView: View {
 struct PosterShareView: View {
     let image: UIImage
     @Environment(\.dismiss) private var dismiss
+    @State private var showSaveSuccess = false
+    @State private var showSaveError = false
+    @State private var errorMessage = ""
 
     var body: some View {
         NavigationStack {
@@ -446,7 +450,7 @@ struct PosterShareView: View {
                     }
 
                     Button {
-                        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                        saveToPhotoLibrary()
                     } label: {
                         HStack {
                             Image(systemName: "photo.on.rectangle.angled")
@@ -468,6 +472,51 @@ struct PosterShareView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("完成") { dismiss() }
+                }
+            }
+            .alert("保存成功", isPresented: $showSaveSuccess) {
+                Button("好的") {}
+            } message: {
+                Text("海报已保存到相册")
+            }
+            .alert("保存失败", isPresented: $showSaveError) {
+                Button("好的") {}
+            } message: {
+                Text(errorMessage)
+            }
+        }
+    }
+
+    private func saveToPhotoLibrary() {
+        PHPhotoLibrary.requestAuthorization { status in
+            DispatchQueue.main.async {
+                switch status {
+                case .authorized, .limited:
+                    self.performSave()
+                case .denied, .restricted:
+                    self.errorMessage = "请在设置中允许访问相册"
+                    self.showSaveError = true
+                case .notDetermined:
+                    self.errorMessage = "无法确定相册权限"
+                    self.showSaveError = true
+                @unknown default:
+                    self.errorMessage = "未知错误"
+                    self.showSaveError = true
+                }
+            }
+        }
+    }
+
+    private func performSave() {
+        PHPhotoLibrary.shared().performChanges {
+            PHAssetChangeRequest.creationRequestForAsset(from: image)
+        } completionHandler: { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    self.showSaveSuccess = true
+                } else {
+                    self.errorMessage = error?.localizedDescription ?? "保存失败"
+                    self.showSaveError = true
                 }
             }
         }
