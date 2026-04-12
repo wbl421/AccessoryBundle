@@ -725,7 +725,8 @@ struct BundlePosterViewSimple: View {
                             Text(item.displayName)
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundStyle(.black)
-                                .lineLimit(1)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
 
                         Spacer()
@@ -828,7 +829,8 @@ struct BundlePosterViewCard: View {
                             Text(item.displayName)
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(.black)
-                                .lineLimit(2)
+                                .lineLimit(4)
+                                .fixedSize(horizontal: false, vertical: true)
 
                             Text("¥\(item.price)")
                                 .font(.system(size: 20, weight: .bold))
