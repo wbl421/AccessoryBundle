@@ -238,18 +238,11 @@ struct BundlePosterView: View {
             // 顶部品牌区
             headerSection
 
-            Divider().padding(.horizontal, 20)
-
             // 价格对比区
             priceSection
 
-            Divider().padding(.horizontal, 20)
-
             // 配件列表
             accessoryListSection
-
-            // 底部
-            footerSection
         }
         .frame(width: 375)
         .background(Color.white)
@@ -257,179 +250,155 @@ struct BundlePosterView: View {
 
     // MARK: - 顶部品牌区
     private var headerSection: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "bag.fill")
-                .font(.system(size: 32))
-                .foregroundStyle(.red)
-            Text(bundleName)
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(.black)
+        ZStack {
+            // 渐变背景
+            LinearGradient(
+                colors: [Color.red.opacity(0.9), Color(red: 1.0, green: 0.3, blue: 0.3)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            VStack(spacing: 8) {
+                Image(systemName: "bag.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.white)
+                Text(bundleName)
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(.white)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
-        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .frame(height: 100)
     }
 
     // MARK: - 价格对比区
     private var priceSection: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 0) {
-                VStack(spacing: 6) {
-                    Text("商品原价")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.gray)
-                    Text("¥\(originalPrice)")
-                        .font(.system(size: 22, weight: .semibold))
+        VStack(spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("套餐价")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.red)
+                Text("¥\(bundlePrice)")
+                    .font(.system(size: 40, weight: .bold))
+                    .foregroundStyle(.red)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("原价 ¥\(originalPrice)")
+                        .font(.system(size: 14))
                         .foregroundStyle(.gray)
                         .strikethrough()
+                    if savings > 0 {
+                        Text("立省 ¥\(savings)")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color(red: 0.2, green: 0.7, blue: 0.3))
+                    }
                 }
-                .frame(maxWidth: .infinity)
-
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1, height: 50)
-
-                VStack(spacing: 6) {
-                    Text("套餐价")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.red)
-                    Text("¥\(bundlePrice)")
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(.red)
-                }
-                .frame(maxWidth: .infinity)
-
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 1, height: 50)
-
-                VStack(spacing: 6) {
-                    Text("立省")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color(red: 0.2, green: 0.7, blue: 0.3))
-                    Text("¥\(savings)")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color(red: 0.2, green: 0.7, blue: 0.3))
-                }
-                .frame(maxWidth: .infinity)
             }
 
             if savings > 0 {
-                Text("约\(String(format: "%.1f", discount * 10))折")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(Color.orange)
-                    .clipShape(Capsule())
+                HStack(spacing: 6) {
+                    Text("约\(String(format: "%.1f", discount * 10))折")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                    Text("超值优惠")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(Color.orange)
+                .clipShape(Capsule())
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.vertical, 24)
         .padding(.horizontal, 20)
+        .padding(.vertical, 20)
         .background(Color.white)
     }
 
     // MARK: - 配件列表
     private var accessoryListSection: some View {
         VStack(spacing: 0) {
-            Text("配件列表")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 12)
-
-            ForEach(Array(accessories.enumerated()), id: \.offset) { index, item in
-                HStack(spacing: 12) {
-                    // 序号
-                    Text("\(index + 1)")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 22, height: 22)
-                        .background(Color.red)
-                        .clipShape(Circle())
-
-                    // 缩略图
-                    Group {
-                        if let path = item.imagePath, let image = ImageStorage.shared.loadImage(filename: path) {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                        } else {
-                            Image(systemName: "photo")
-                                .font(.body)
-                                .foregroundStyle(.gray)
-                        }
-                    }
-                    .frame(width: 48, height: 48)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .background(Color(red: 0.96, green: 0.96, blue: 0.96))
-
-                    // 分类 + 名称
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.categoryName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.black)
-                        Text(item.displayName)
-                            .font(.system(size: 12))
-                            .foregroundStyle(.gray)
-                            .lineLimit(1)
-                    }
-
-                    Spacer()
-
-                    // 价格
-                    Text("¥\(item.price)")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.red)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-
-                if index < accessories.count - 1 {
-                    Divider().padding(.horizontal, 20)
-                }
-            }
-        }
-        .background(Color.white)
-        .padding(.bottom, 12)
-    }
-
-    // MARK: - 底部
-    private var footerSection: some View {
-        VStack(spacing: 8) {
-            Divider()
-
+            // 标题
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("扫码咨询")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.gray)
-                    Text("了解更多优惠")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.gray.opacity(0.7))
-                }
+                Text("配件清单")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.black)
                 Spacer()
-                // 二维码占位
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    .frame(width: 64, height: 64)
-                    .overlay(
-                        VStack(spacing: 2) {
-                            Image(systemName: "qrcode")
-                                .font(.system(size: 20))
-                                .foregroundStyle(.gray)
-                            Text("二维码")
-                                .font(.system(size: 8))
-                                .foregroundStyle(.gray)
-                        }
-                    )
+                Text("共\(accessories.count)件")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.gray)
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            // 两列网格布局
+            let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(Array(accessories.enumerated()), id: \.offset) { index, item in
+                    accessoryCard(item: item, index: index)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 20)
         }
-        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .background(Color(red: 0.97, green: 0.97, blue: 0.97))
+    }
+
+    // MARK: - 配件卡片
+    @ViewBuilder
+    private func accessoryCard(item: PosterAccessoryItem, index: Int) -> some View {
+        VStack(spacing: 0) {
+            // 图片区
+            ZStack(alignment: .topLeading) {
+                Group {
+                    if let path = item.imagePath, let image = ImageStorage.shared.loadImage(filename: path) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        ZStack {
+                            Color(red: 0.94, green: 0.94, blue: 0.94)
+                            Image(systemName: "photo")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.gray.opacity(0.5))
+                        }
+                    }
+                }
+                .frame(height: 120)
+                .clipped()
+
+                // 序号角标
+                Text("\(index + 1)")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 20, height: 20)
+                    .background(Color.red)
+                    .clipShape(Circle())
+                    .padding(6)
+            }
+
+            // 文字区
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.categoryName)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.gray)
+                Text(item.displayName)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.black)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("¥\(item.price)")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.red)
+            }
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 
