@@ -37,14 +37,19 @@ struct LogoEditView: View {
 
                         // 预览容器
                         VStack(spacing: bottomPadding) {
-                            Image(uiImage: selectedImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(
-                                    width: min(containerWidth * imageScale, containerWidth),
-                                    height: min(containerHeight * imageScale, containerHeight)
-                                )
-                                .frame(width: containerWidth, height: containerHeight)
+                            GeometryReader { geometry in
+                                Image(uiImage: selectedImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: geometry.size.width * imageScale, height: geometry.size.height * imageScale)
+                                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                            }
+                            .frame(width: min(containerWidth, 320), height: min(containerHeight, 200))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemGray6))
+                            )
 
                             // 模拟下方标题
                             Text("会员优享套餐")
@@ -78,9 +83,9 @@ struct LogoEditView: View {
                                 Text("100")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
-                                Slider(value: $containerWidth, in: 100...350, step: 10)
+                                Slider(value: $containerWidth, in: 100...400, step: 10)
                                     .tint(.blue)
-                                Text("350")
+                                Text("400")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
@@ -102,9 +107,9 @@ struct LogoEditView: View {
                                 Text("50")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
-                                Slider(value: $containerHeight, in: 50...300, step: 10)
+                                Slider(value: $containerHeight, in: 50...400, step: 10)
                                     .tint(.blue)
-                                Text("300")
+                                Text("400")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
@@ -126,9 +131,9 @@ struct LogoEditView: View {
                                 Text("30%")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
-                                Slider(value: $imageScale, in: 0.3...2.0, step: 0.1)
+                                Slider(value: $imageScale, in: 0.3...3.0, step: 0.1)
                                     .tint(.blue)
-                                Text("200%")
+                                Text("300%")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }

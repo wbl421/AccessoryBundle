@@ -206,7 +206,7 @@ struct ContentView: View {
     private var logoSection: some View {
         VStack(spacing: appSettings.bottomPadding) {
             if let logoImage = appSettings.logoImage {
-                // 已有 logo
+                // 已有图片
                 ZStack(alignment: .topTrailing) {
                     if isEditMode {
                         // 编辑模式：可点击重新编辑
@@ -214,19 +214,19 @@ struct ContentView: View {
                             selectedLogoImage = logoImage
                             showLogoEdit = true
                         } label: {
-                            Image(uiImage: logoImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(
-                                    width: min(appSettings.containerWidth * appSettings.imageScale, appSettings.containerWidth),
-                                    height: min(appSettings.containerHeight * appSettings.imageScale, appSettings.containerHeight)
-                                )
-                                .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.systemGray6))
-                                )
+                            GeometryReader { geometry in
+                                Image(uiImage: logoImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: geometry.size.width * appSettings.imageScale, height: geometry.size.height * appSettings.imageScale)
+                                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                            }
+                            .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemGray6))
+                            )
                         }
                         .buttonStyle(.plain)
 
@@ -241,16 +241,16 @@ struct ContentView: View {
                         }
                         .offset(x: 8, y: -8)
                     } else {
-                        // 非编辑模式：只显示 Logo
-                        Image(uiImage: logoImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(
-                                width: min(appSettings.containerWidth * appSettings.imageScale, appSettings.containerWidth),
-                                height: min(appSettings.containerHeight * appSettings.imageScale, appSettings.containerHeight)
-                            )
-                            .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        // 非编辑模式：只显示图片
+                        GeometryReader { geometry in
+                            Image(uiImage: logoImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: geometry.size.width * appSettings.imageScale, height: geometry.size.height * appSettings.imageScale)
+                                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        }
+                        .frame(width: appSettings.containerWidth, height: appSettings.containerHeight)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
                 .alert("删除图片", isPresented: $showDeleteLogoAlert) {
