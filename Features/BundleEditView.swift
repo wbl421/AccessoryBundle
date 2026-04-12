@@ -250,7 +250,9 @@ struct BundleEditView: View {
     private func accessoryItemRow(_ item: BundleAccessoryItem) -> some View {
         let accessory = dataManager.accessories.first { $0.id == item.accessoryId }
         return HStack(spacing: 14) {
-            Group {
+            // 图片
+            ZStack {
+                Color.gray.opacity(0.1)
                 if let imagePath = item.customImagePath ?? accessory?.thumbnailPaths.first,
                    let image = ImageStorage.shared.loadImage(filename: imagePath) {
                     Image(uiImage: image)
@@ -263,7 +265,6 @@ struct BundleEditView: View {
                 }
             }
             .frame(width: 56, height: 56)
-            .background(Color.gray.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 6) {
