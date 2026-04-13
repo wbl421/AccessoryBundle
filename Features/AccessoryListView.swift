@@ -645,12 +645,12 @@ struct AccessoryCompactRow: View {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 70, height: 70)
+                    .frame(width: 80, height: 80)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.gray.opacity(0.1))
-                    .frame(width: 70, height: 70)
+                    .frame(width: 80, height: 80)
                     .overlay {
                         Image(systemName: "photo")
                             .font(.title3)
@@ -684,7 +684,7 @@ struct AccessoryCompactRow: View {
                     .foregroundStyle(.red)
             }
         }
-        .padding(.leading, 8)
+        .padding(.leading, 4)
         .padding(.trailing, 8)
         .padding(.vertical, 10)
         .background(Color(.systemBackground))
