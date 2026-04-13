@@ -164,43 +164,8 @@ struct AccessoryListView: View {
         .background(Color(.systemGroupedBackground))
     }
 
-    // 全部配件列表覆盖层
-    @ViewBuilder
-    private var allAccessoriesOverlay: some View {
-        if showAllAccessories {
-            CategoryAccessoriesSheet(
-                categoryName: "全部配件",
-                allAccessories: allAccessories,
-                onAddAccessory: { showingAddSheet = true },
-                onDismiss: { withAnimation { showAllAccessories = false } }
-            )
-            .transition(.move(edge: .trailing))
-            .zIndex(1)
-        }
-    }
-
-    // 分类配件列表覆盖层
-    @ViewBuilder
-    private var categoryAccessoriesOverlay: some View {
-        if let categoryId = selectedCategoryId {
-            let category = sortedCategories.first { $0.id == categoryId }
-            CategoryAccessoriesSheet(
-                categoryName: category?.name ?? "配件",
-                categoryId: categoryId,
-                onAddAccessory: { showingAddSheet = true },
-                onDismiss: { withAnimation { selectedCategoryId = nil } }
-            )
-            .transition(.move(edge: .trailing))
-            .zIndex(1)
-        }
-    }
-
     var body: some View {
-        ZStack {
-            mainContent
-            allAccessoriesOverlay
-            categoryAccessoriesOverlay
-        }
+        mainContent
         .navigationTitle("配件库管理")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -265,6 +230,27 @@ struct AccessoryListView: View {
         }
         .sheet(isPresented: $showingCategoryManagement) {
             AccessoryCategoryManagementView()
+        }
+        .fullScreenCover(isPresented: $showAllAccessories) {
+            CategoryAccessoriesSheet(
+                categoryName: "全部配件",
+                allAccessories: allAccessories,
+                onAddAccessory: { showingAddSheet = true },
+                onDismiss: { showAllAccessories = false }
+            )
+        }
+        .fullScreenCover(item: Binding(
+            get: { selectedCategoryId.flatMap { IdentifiableUUID(id: $0) } },
+            set: { selectedCategoryId = $0?.id }
+        )) { identifiableId in
+            if let category = sortedCategories.first(where: { $0.id == identifiableId.id }) {
+                CategoryAccessoriesSheet(
+                    categoryName: category.name,
+                    categoryId: category.id,
+                    onAddAccessory: { showingAddSheet = true },
+                    onDismiss: { selectedCategoryId = nil }
+                )
+            }
         }
         .onAppear { localCategories = sortedCategories }
         .onChange(of: sortedCategories) { localCategories = $0 }
@@ -629,10 +615,7 @@ struct CategoryAccessoriesSheet: View {
                     Button {
                         onDismiss()
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("返回")
-                        }
+                        Image(systemName: "chevron.left")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
