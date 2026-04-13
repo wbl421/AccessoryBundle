@@ -622,6 +622,7 @@ struct CategoryAccessoriesSheet: View {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.hidden)
             }
+        }
     }
 }
 
