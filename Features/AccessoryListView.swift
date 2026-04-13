@@ -131,36 +131,64 @@ struct AccessoryListView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                // 全部配件概览（不参与排序）
-                CategorySectionView(
-                    category: nil,
-                    categoryName: "全部配件",
-                    categoryIcon: "cube.box.fill",
-                    categoryColor: .blue,
-                    accessoryCount: dataManager.accessories.count,
-                    onTap: { showAllAccessories = true },
-                    onAddAccessory: { showingAddSheet = true }
-                )
+        ZStack {
+            // 主页面
+            ScrollView {
+                VStack(spacing: 12) {
+                    // 全部配件概览（不参与排序）
+                    CategorySectionView(
+                        category: nil,
+                        categoryName: "全部配件",
+                        categoryIcon: "cube.box.fill",
+                        categoryColor: .blue,
+                        accessoryCount: dataManager.accessories.count,
+                        onTap: { withAnimation { showAllAccessories = true } },
+                        onAddAccessory: { showingAddSheet = true }
+                    )
 
-                // 分类列表（可拖拽排序）
-                CategoryDragListView(
-                    categories: currentCategories,
-                    dragItem: dragItem,
-                    dragOffset: dragOffset,
-                    dragTargetIndex: dragTargetIndex,
-                    longPressItem: longPressItem,
-                    onSelectCategory: { selectedCategoryId = $0 },
-                    onDragStart: startDrag,
-                    onDragUpdate: updateDrag,
-                    onDragEnd: endDrag,
-                    onLongPress: { longPressItem = $0 }
-                )
+                    // 分类列表（可拖拽排序）
+                    CategoryDragListView(
+                        categories: currentCategories,
+                        dragItem: dragItem,
+                        dragOffset: dragOffset,
+                        dragTargetIndex: dragTargetIndex,
+                        longPressItem: longPressItem,
+                        onSelectCategory: { withAnimation { selectedCategoryId = $0 } },
+                        onDragStart: startDrag,
+                        onDragUpdate: updateDrag,
+                        onDragEnd: endDrag,
+                        onLongPress: { longPressItem = $0 }
+                    )
+                }
+                .padding(16)
             }
-            .padding(16)
+            .background(Color(.systemGroupedBackground))
+
+            // 全屏配件列表（从右边滑入）
+            if showAllAccessories {
+                CategoryAccessoriesSheet(
+                    categoryName: "全部配件",
+                    allAccessories: allAccessories,
+                    onAddAccessory: { showingAddSheet = true },
+                    onDismiss: { withAnimation { showAllAccessories = false } }
+                )
+                .transition(.move(edge: .trailing))
+                .zIndex(1)
+            }
+
+            // 分类配件列表（从右边滑入）
+            if let categoryId = selectedCategoryId {
+                let category = sortedCategories.first { $0.id == categoryId }
+                CategoryAccessoriesSheet(
+                    categoryName: category?.name ?? "配件",
+                    categoryId: categoryId,
+                    onAddAccessory: { showingAddSheet = true },
+                    onDismiss: { withAnimation { selectedCategoryId = nil } }
+                )
+                .transition(.move(edge: .trailing))
+                .zIndex(1)
+            }
         }
-        .background(Color(.systemGroupedBackground))
         .navigationTitle("配件库管理")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -225,27 +253,6 @@ struct AccessoryListView: View {
         }
         .sheet(isPresented: $showingCategoryManagement) {
             AccessoryCategoryManagementView()
-        }
-        .fullScreenCover(isPresented: $showAllAccessories) {
-            CategoryAccessoriesSheet(
-                categoryName: "全部配件",
-                allAccessories: allAccessories,
-                onAddAccessory: { showingAddSheet = true }
-            )
-        }
-        .fullScreenCover(item: Binding(
-            get: { selectedCategoryId.flatMap { IdentifiableUUID(id: $0) } },
-            set: { selectedCategoryId = $0?.id }
-        )) { identifiableId in
-            let category = sortedCategories.first { $0.id == identifiableId.id }
-            
-            if let category = category {
-                CategoryAccessoriesSheet(
-                    categoryName: category.name,
-                    categoryId: category.id,
-                    onAddAccessory: { showingAddSheet = true }
-                )
-            }
         }
         .onAppear { localCategories = sortedCategories }
         .onChange(of: sortedCategories) { localCategories = $0 }
@@ -561,8 +568,8 @@ struct CategoryAccessoriesSheet: View {
     var categoryId: UUID? = nil
     var allAccessories: [Accessory]? = nil // 全部配件场景
     let onAddAccessory: () -> Void
+    var onDismiss: () -> Void = {}
     @EnvironmentObject var dataManager: DataManager
-    @Environment(\.dismiss) private var dismiss
     @State private var showingAddSheet = false
 
     // 动态获取最新配件数据，编辑后自动刷新
@@ -573,7 +580,7 @@ struct CategoryAccessoriesSheet: View {
         if let all = allAccessories { return all }
         return dataManager.accessories.sorted { $0.order < $1.order }
     }
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -606,10 +613,17 @@ struct CategoryAccessoriesSheet: View {
             .navigationTitle(categoryName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }
-                }
                 ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        onDismiss()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                            Text("返回")
+                        }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingAddSheet = true
                     } label: {
@@ -623,6 +637,8 @@ struct CategoryAccessoriesSheet: View {
                     .presentationDragIndicator(.hidden)
             }
         }
+        .background(Color(.systemGroupedBackground))
+        .transition(.move(edge: .trailing))
     }
 }
 
