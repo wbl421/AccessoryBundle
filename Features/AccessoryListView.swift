@@ -130,64 +130,76 @@ struct AccessoryListView: View {
         dataManager.accessories.sorted { $0.order < $1.order }
     }
 
+    // 主页面内容
+    private var mainContent: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                // 全部配件概览（不参与排序）
+                CategorySectionView(
+                    category: nil,
+                    categoryName: "全部配件",
+                    categoryIcon: "cube.box.fill",
+                    categoryColor: .blue,
+                    accessoryCount: dataManager.accessories.count,
+                    onTap: { withAnimation { showAllAccessories = true } },
+                    onAddAccessory: { showingAddSheet = true }
+                )
+
+                // 分类列表（可拖拽排序）
+                CategoryDragListView(
+                    categories: currentCategories,
+                    dragItem: dragItem,
+                    dragOffset: dragOffset,
+                    dragTargetIndex: dragTargetIndex,
+                    longPressItem: longPressItem,
+                    onSelectCategory: { withAnimation { selectedCategoryId = $0 } },
+                    onDragStart: startDrag,
+                    onDragUpdate: updateDrag,
+                    onDragEnd: endDrag,
+                    onLongPress: { longPressItem = $0 }
+                )
+            }
+            .padding(16)
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+
+    // 全部配件列表覆盖层
+    @ViewBuilder
+    private var allAccessoriesOverlay: some View {
+        if showAllAccessories {
+            CategoryAccessoriesSheet(
+                categoryName: "全部配件",
+                allAccessories: allAccessories,
+                onAddAccessory: { showingAddSheet = true },
+                onDismiss: { withAnimation { showAllAccessories = false } }
+            )
+            .transition(.move(edge: .trailing))
+            .zIndex(1)
+        }
+    }
+
+    // 分类配件列表覆盖层
+    @ViewBuilder
+    private var categoryAccessoriesOverlay: some View {
+        if let categoryId = selectedCategoryId {
+            let category = sortedCategories.first { $0.id == categoryId }
+            CategoryAccessoriesSheet(
+                categoryName: category?.name ?? "配件",
+                categoryId: categoryId,
+                onAddAccessory: { showingAddSheet = true },
+                onDismiss: { withAnimation { selectedCategoryId = nil } }
+            )
+            .transition(.move(edge: .trailing))
+            .zIndex(1)
+        }
+    }
+
     var body: some View {
         ZStack {
-            // 主页面
-            ScrollView {
-                VStack(spacing: 12) {
-                    // 全部配件概览（不参与排序）
-                    CategorySectionView(
-                        category: nil,
-                        categoryName: "全部配件",
-                        categoryIcon: "cube.box.fill",
-                        categoryColor: .blue,
-                        accessoryCount: dataManager.accessories.count,
-                        onTap: { withAnimation { showAllAccessories = true } },
-                        onAddAccessory: { showingAddSheet = true }
-                    )
-
-                    // 分类列表（可拖拽排序）
-                    CategoryDragListView(
-                        categories: currentCategories,
-                        dragItem: dragItem,
-                        dragOffset: dragOffset,
-                        dragTargetIndex: dragTargetIndex,
-                        longPressItem: longPressItem,
-                        onSelectCategory: { withAnimation { selectedCategoryId = $0 } },
-                        onDragStart: startDrag,
-                        onDragUpdate: updateDrag,
-                        onDragEnd: endDrag,
-                        onLongPress: { longPressItem = $0 }
-                    )
-                }
-                .padding(16)
-            }
-            .background(Color(.systemGroupedBackground))
-
-            // 全屏配件列表（从右边滑入）
-            if showAllAccessories {
-                CategoryAccessoriesSheet(
-                    categoryName: "全部配件",
-                    allAccessories: allAccessories,
-                    onAddAccessory: { showingAddSheet = true },
-                    onDismiss: { withAnimation { showAllAccessories = false } }
-                )
-                .transition(.move(edge: .trailing))
-                .zIndex(1)
-            }
-
-            // 分类配件列表（从右边滑入）
-            if let categoryId = selectedCategoryId {
-                let category = sortedCategories.first { $0.id == categoryId }
-                CategoryAccessoriesSheet(
-                    categoryName: category?.name ?? "配件",
-                    categoryId: categoryId,
-                    onAddAccessory: { showingAddSheet = true },
-                    onDismiss: { withAnimation { selectedCategoryId = nil } }
-                )
-                .transition(.move(edge: .trailing))
-                .zIndex(1)
-            }
+            mainContent
+            allAccessoriesOverlay
+            categoryAccessoriesOverlay
         }
         .navigationTitle("配件库管理")
         .navigationBarTitleDisplayMode(.large)
