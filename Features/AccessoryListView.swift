@@ -684,7 +684,7 @@ struct AccessoryCompactRow: View {
                     .foregroundStyle(.red)
             }
         }
-        .padding(.leading, 4)
+        .padding(.leading, 2)
         .padding(.trailing, 8)
         .padding(.vertical, 10)
         .background(Color(.systemBackground))
