@@ -599,6 +599,7 @@ struct CategoryAccessoriesSheet: View {
                         NavigationLink(destination: AccessoryDetailView(accessoryId: accessory.id)) {
                             AccessoryCompactRow(accessory: accessory)
                         }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 2, bottom: 0, trailing: 0))
                     }
                 }
             }
@@ -684,7 +685,6 @@ struct AccessoryCompactRow: View {
                     .foregroundStyle(.red)
             }
         }
-        .padding(.leading, 2)
         .padding(.trailing, 8)
         .padding(.vertical, 10)
         .background(Color(.systemBackground))
