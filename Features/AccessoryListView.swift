@@ -681,8 +681,8 @@ struct AccessoryCompactRow: View {
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.red)
-                    .padding(.leading, 8)
             }
+            .offset(x: 8)
         }
         .padding(.trailing, 8)
         .padding(.vertical, 10)
