@@ -226,14 +226,14 @@ struct AccessoryListView: View {
         .sheet(isPresented: $showingCategoryManagement) {
             AccessoryCategoryManagementView()
         }
-        .sheet(isPresented: $showAllAccessories) {
+        .fullScreenCover(isPresented: $showAllAccessories) {
             CategoryAccessoriesSheet(
                 categoryName: "全部配件",
                 allAccessories: allAccessories,
                 onAddAccessory: { showingAddSheet = true }
             )
         }
-        .sheet(item: Binding(
+        .fullScreenCover(item: Binding(
             get: { selectedCategoryId.flatMap { IdentifiableUUID(id: $0) } },
             set: { selectedCategoryId = $0?.id }
         )) { identifiableId in
@@ -622,9 +622,6 @@ struct CategoryAccessoriesSheet: View {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.hidden)
             }
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 }
 
