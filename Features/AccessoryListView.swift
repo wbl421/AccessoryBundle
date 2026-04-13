@@ -638,7 +638,7 @@ struct AccessoryCompactRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             // 缩略图
             if let imagePath = accessory.thumbnailPaths.first,
                let image = ImageStorage.shared.loadImage(filename: imagePath) {
@@ -675,8 +675,7 @@ struct AccessoryCompactRow: View {
                         .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
             }
-
-            Spacer()
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text("¥\(accessory.price)")
@@ -685,7 +684,8 @@ struct AccessoryCompactRow: View {
                     .foregroundStyle(.red)
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, 8)
+        .padding(.trailing, 8)
         .padding(.vertical, 10)
         .background(Color(.systemBackground))
     }
