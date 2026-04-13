@@ -98,10 +98,8 @@ struct ImageCarouselView: View {
 struct AccessoryListView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var searchText = ""
-    @State private var selectedCategoryId: UUID?
     @State private var showingAddSheet = false
     @State private var showingCategoryManagement = false
-    @State private var showAllAccessories = false
     @State private var dragItem: AccessoryCategory?
     @State private var dragOffset: CGFloat = 0
     @State private var dragTargetIndex: Int?
@@ -141,8 +139,11 @@ struct AccessoryListView: View {
                     categoryIcon: "cube.box.fill",
                     categoryColor: .blue,
                     accessoryCount: dataManager.accessories.count,
-                    onTap: { withAnimation { showAllAccessories = true } },
-                    onAddAccessory: { showingAddSheet = true }
+                    destination: AnyView(CategoryAccessoriesListView(
+                        categoryName: "全部配件",
+                        allAccessories: allAccessories,
+                        onAddAccessory: { showingAddSheet = true }
+                    ))
                 )
 
                 // 分类列表（可拖拽排序）
@@ -152,7 +153,13 @@ struct AccessoryListView: View {
                     dragOffset: dragOffset,
                     dragTargetIndex: dragTargetIndex,
                     longPressItem: longPressItem,
-                    onSelectCategory: { id in withAnimation { selectedCategoryId = id } },
+                    destinationForCategory: { category in
+                        AnyView(CategoryAccessoriesListView(
+                            categoryName: category.name,
+                            categoryId: category.id,
+                            onAddAccessory: { showingAddSheet = true }
+                        ))
+                    },
                     onDragStart: startDrag,
                     onDragUpdate: updateDrag,
                     onDragEnd: endDrag,
@@ -230,27 +237,6 @@ struct AccessoryListView: View {
         }
         .sheet(isPresented: $showingCategoryManagement) {
             AccessoryCategoryManagementView()
-        }
-        .fullScreenCover(isPresented: $showAllAccessories) {
-            CategoryAccessoriesSheet(
-                categoryName: "全部配件",
-                allAccessories: allAccessories,
-                onAddAccessory: { showingAddSheet = true },
-                onDismiss: { showAllAccessories = false }
-            )
-        }
-        .fullScreenCover(item: Binding(
-            get: { selectedCategoryId.flatMap { IdentifiableUUID(id: $0) } },
-            set: { selectedCategoryId = $0?.id }
-        )) { identifiableId in
-            if let category = sortedCategories.first(where: { $0.id == identifiableId.id }) {
-                CategoryAccessoriesSheet(
-                    categoryName: category.name,
-                    categoryId: category.id,
-                    onAddAccessory: { showingAddSheet = true },
-                    onDismiss: { selectedCategoryId = nil }
-                )
-            }
         }
         .onAppear { localCategories = sortedCategories }
         .onChange(of: sortedCategories) { localCategories = $0 }
@@ -330,7 +316,7 @@ struct CategoryDragListView: View {
     let dragOffset: CGFloat
     let dragTargetIndex: Int?
     let longPressItem: AccessoryCategory?
-    let onSelectCategory: (UUID) -> Void
+    let destinationForCategory: (AccessoryCategory) -> AnyView
     let onDragStart: (AccessoryCategory, Int, [AccessoryCategory]) -> Void
     let onDragUpdate: (CGFloat, Int?) -> Void
     let onDragEnd: (AccessoryCategory, Int, Int) -> Void
@@ -353,7 +339,7 @@ struct CategoryDragListView: View {
                 longPressItem: longPressItem,
                 localCategories: categories,
                 categoryColor: categoryColor(for: category),
-                onTap: { onSelectCategory(category.id) },
+                destination: destinationForCategory(category),
                 onDragStart: onDragStart,
                 onDragUpdate: onDragUpdate,
                 onLongPress: onLongPress,
@@ -364,7 +350,7 @@ struct CategoryDragListView: View {
 }
 
 // MARK: - Draggable Category Row
-struct DraggableCategoryRow: View {
+struct DraggableCategoryRow<Destination: View>: View {
     let category: AccessoryCategory
     let index: Int
     let dragItem: AccessoryCategory?
@@ -373,7 +359,7 @@ struct DraggableCategoryRow: View {
     let longPressItem: AccessoryCategory?
     let localCategories: [AccessoryCategory]
     let categoryColor: Color
-    let onTap: () -> Void
+    let destination: Destination?
     let onDragStart: (AccessoryCategory, Int, [AccessoryCategory]) -> Void
     let onDragUpdate: (CGFloat, Int?) -> Void
     let onLongPress: (AccessoryCategory) -> Void
@@ -406,7 +392,7 @@ struct DraggableCategoryRow: View {
         return 0
     }
 
-    var body: some View {
+    private var cardContent: some View {
         HStack(spacing: 12) {
             // 图标
             ZStack {
@@ -446,6 +432,19 @@ struct DraggableCategoryRow: View {
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+    }
+    
+    var body: some View {
+        Group {
+            if let destination = destination {
+                NavigationLink(destination: destination) {
+                    cardContent
+                }
+                .buttonStyle(.plain)
+            } else {
+                cardContent
+            }
+        }
         .offset(y: isDraggingThis ? dragOffset : rowOffset)
         .zIndex(dynamicZIndex)
         .opacity(isDraggingThis ? 0.9 : 1)
@@ -462,10 +461,6 @@ struct DraggableCategoryRow: View {
                 hasTriggeredLongPress = true
                 onLongPress(category)
             }
-        }
-        // 点击手势 - 用于导航
-        .onTapGesture {
-            onTap()
         }
         // 拖拽手势 - 移动超过 15px 才触发
         .simultaneousGesture(
@@ -508,59 +503,149 @@ struct CategorySectionView: View {
     let categoryColor: Color
     var customIconPath: String? = nil
     let accessoryCount: Int
-    let onTap: () -> Void
-    let onAddAccessory: () -> Void
+    let destination: AnyView?
+
+    init(category: AccessoryCategory?,
+         categoryName: String,
+         categoryIcon: String,
+         categoryColor: Color,
+         customIconPath: String? = nil,
+         accessoryCount: Int,
+         destination: AnyView? = nil) {
+        self.category = category
+        self.categoryName = categoryName
+        self.categoryIcon = categoryIcon
+        self.categoryColor = categoryColor
+        self.customIconPath = customIconPath
+        self.accessoryCount = accessoryCount
+        self.destination = destination
+    }
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                // 图标
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(categoryColor.opacity(0.15))
-                        .frame(width: 48, height: 48)
+        if let destination = destination {
+            NavigationLink(destination: destination) {
+                cardContent
+            }
+            .buttonStyle(.plain)
+        } else {
+            Button { } label: {
+                cardContent
+            }
+            .buttonStyle(.plain)
+        }
+    }
 
-                    if let customPath = customIconPath,
-                       let customImage = ImageStorage.shared.loadImage(filename: customPath) {
-                        Image(uiImage: customImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 28, height: 28)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    } else {
-                        Image(systemName: categoryIcon)
-                            .font(.title3)
-                            .foregroundStyle(categoryColor)
-                    }
+    private var cardContent: some View {
+        HStack(spacing: 12) {
+            // 图标
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(categoryColor.opacity(0.15))
+                    .frame(width: 48, height: 48)
+
+                if let customPath = customIconPath,
+                   let customImage = ImageStorage.shared.loadImage(filename: customPath) {
+                    Image(uiImage: customImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 28, height: 28)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    Image(systemName: categoryIcon)
+                        .font(.title3)
+                        .foregroundStyle(categoryColor)
                 }
+            }
 
-                // 标题和数量
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(categoryName)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text(accessoryCount == 0 ? "暂无配件" : "\(accessoryCount) 件配件")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                // 箭头
-                Image(systemName: "chevron.right")
+            // 标题和数量
+            VStack(alignment: .leading, spacing: 2) {
+                Text(categoryName)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(accessoryCount == 0 ? "暂无配件" : "\(accessoryCount) 件配件")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .padding(14)
-            .background(Color(.systemBackground))
+
+            Spacer()
+
+            // 箭头
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
     }
 }
 
-// MARK: - Category Accessories Sheet (底部弹出的配件列表)
+// MARK: - Category Accessories List View (用于 NavigationLink 跳转)
+struct CategoryAccessoriesListView: View {
+    let categoryName: String
+    var categoryId: UUID? = nil
+    var allAccessories: [Accessory]? = nil
+    let onAddAccessory: () -> Void
+    @EnvironmentObject var dataManager: DataManager
+    @State private var showingAddSheet = false
+
+    private var accessories: [Accessory] {
+        if let categoryId = categoryId {
+            return dataManager.accessories.filter { $0.categoryId == categoryId }.sorted { $0.order < $1.order }
+        }
+        if let all = allAccessories { return all }
+        return dataManager.accessories.sorted { $0.order < $1.order }
+    }
+
+    var body: some View {
+        List {
+            if accessories.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "cube.box")
+                        .font(.system(size: 50))
+                        .foregroundStyle(.secondary)
+                    Text("暂无配件")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Button {
+                        showingAddSheet = true
+                    } label: {
+                        Text("添加配件")
+                            .font(.subheadline)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                ForEach(accessories) { accessory in
+                    NavigationLink(destination: AccessoryDetailView(accessoryId: accessory.id)) {
+                        AccessoryCompactRow(accessory: accessory)
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
+                }
+            }
+        }
+        .navigationTitle(categoryName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingAddSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showingAddSheet) {
+            AccessoryEditView(accessory: nil, defaultCategoryId: categoryId)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+        }
+    }
+}
+
+// MARK: - Category Accessories Sheet (底部弹出的配件列表 - 保留兼容)
 struct CategoryAccessoriesSheet: View {
     let categoryName: String
     var categoryId: UUID? = nil
