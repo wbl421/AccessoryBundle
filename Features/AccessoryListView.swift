@@ -152,7 +152,7 @@ struct AccessoryListView: View {
                     dragOffset: dragOffset,
                     dragTargetIndex: dragTargetIndex,
                     longPressItem: longPressItem,
-                    onSelectCategory: { withAnimation { selectedCategoryId = $0 } },
+                    onSelectCategory: { id in withAnimation { selectedCategoryId = id } },
                     onDragStart: startDrag,
                     onDragUpdate: updateDrag,
                     onDragEnd: endDrag,
