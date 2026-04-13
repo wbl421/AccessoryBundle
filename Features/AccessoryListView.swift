@@ -599,7 +599,7 @@ struct CategoryAccessoriesSheet: View {
                         NavigationLink(destination: AccessoryDetailView(accessoryId: accessory.id)) {
                             AccessoryCompactRow(accessory: accessory)
                         }
-                        .listRowInsets(EdgeInsets(top: 0, leading: 2, bottom: 0, trailing: 0))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 24))
                     }
                 }
             }
