@@ -17,6 +17,7 @@
 		5020D5078238923F1FAEEB21 /* TemplateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63F0704919CB041BAA54FE7 /* TemplateManager.swift */; };
 		584848CFEC083C8ADD0CB801 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF12FD6E77D29B3CA9B83DBD /* ContentView.swift */; };
 		6868E8567238821A000004EF /* ExcelParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C360C817BC12522225D06262 /* ExcelParser.swift */; };
+		7A1B2C3D4E5F6789ABCDEF01 /* BatchImportEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B9CDE0F1A2B3456789ABC01 /* BatchImportEntryView.swift */; };
 		87828961AE279EDF4CD9183A /* CategoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD694494B1E5088B6CB58D4A /* CategoryView.swift */; };
 		8EB595896805989C90AB71A4 /* BundlePosterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7004441B143671C5073DE5A3 /* BundlePosterView.swift */; };
 		99DEBD017593FD9858FF6615 /* CoreXLSX in Frameworks */ = {isa = PBXBuildFile; productRef = F5864AA1785EBF6A7DFF712F /* CoreXLSX */; };
@@ -43,6 +44,7 @@
 		84BA740192B4FE52F62CEE1D /* BundleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleDetailView.swift; sourceTree = "<group>"; };
 		8F98B83B596041819256FD25 /* Bundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bundle.swift; sourceTree = "<group>"; };
 		A63F0704919CB041BAA54FE7 /* TemplateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateManager.swift; sourceTree = "<group>"; };
+		8B9CDE0F1A2B3456789ABC01 /* BatchImportEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImportEntryView.swift; sourceTree = "<group>"; };
 		AD694494B1E5088B6CB58D4A /* CategoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryView.swift; sourceTree = "<group>"; };
 		AF12FD6E77D29B3CA9B83DBD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B260823288E45C7FD6932510 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
@@ -137,6 +139,7 @@
 				C360C817BC12522225D06262 /* ExcelParser.swift */,
 				1F2BF13025FF25392E09603D /* ImportPreviewView.swift */,
 				A63F0704919CB041BAA54FE7 /* TemplateManager.swift */,
+				8B9CDE0F1A2B3456789ABC01 /* BatchImportEntryView.swift */,
 			);
 			path = BatchImport;
 			sourceTree = "<group>";
@@ -230,6 +233,7 @@
 				B10C388BA3B0B5094B0EF62F /* DataManager.swift in Sources */,
 				EF284E928BB3264F8A0451DF /* DocumentPickerView.swift in Sources */,
 				6868E8567238821A000004EF /* ExcelParser.swift in Sources */,
+				7A1B2C3D4E5F6789ABCDEF01 /* BatchImportEntryView.swift in Sources */,
 				F1B72ADEB85D020CB26398D4 /* ImportPreviewView.swift in Sources */,
 				405256170AD8037EE6DDBF75 /* LogoEditView.swift in Sources */,
 				DFECB3CC1C7D3744911482E5 /* OnboardingManager.swift in Sources */,

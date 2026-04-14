@@ -97,20 +97,14 @@ struct ImageCarouselView: View {
 // MARK: - Accessory List View (分类列表风格)
 struct AccessoryListView: View {
     @EnvironmentObject var dataManager: DataManager
-    @State private var searchText = ""
     @State private var showingAddSheet = false
     @State private var showingCategoryManagement = false
+    @State private var showingBatchImport = false
     @State private var dragItem: AccessoryCategory?
     @State private var dragOffset: CGFloat = 0
     @State private var dragTargetIndex: Int?
     @State private var localCategories: [AccessoryCategory] = []
     @State private var longPressItem: AccessoryCategory?
-
-    // 批量导入相关
-    @State private var showingDocumentPicker = false
-    @State private var parsedResult: ParsedImportResult?
-    @State private var showingTemplateShare = false
-    @State private var importErrorMessage: String?
 
     private var sortedCategories: [AccessoryCategory] {
         dataManager.accessoryCategories.sorted { $0.order < $1.order }
@@ -181,11 +175,8 @@ struct AccessoryListView: View {
                     Button { showingAddSheet = true } label: {
                         Label("添加配件", systemImage: "plus")
                     }
-                    Button { showingDocumentPicker = true } label: {
+                    Button { showingBatchImport = true } label: {
                         Label("批量导入", systemImage: "square.and.arrow.down")
-                    }
-                    Button { showingTemplateShare = true } label: {
-                        Label("下载模板", systemImage: "doc.text")
                     }
                     Button { showingCategoryManagement = true } label: {
                         Label("管理分类", systemImage: "folder.badge.gearshape")
@@ -195,40 +186,9 @@ struct AccessoryListView: View {
                 }
             }
         }
-        .alert("导入失败", isPresented: .constant(importErrorMessage != nil)) {
-            Button("确定") { importErrorMessage = nil }
-        } message: {
-            Text(importErrorMessage ?? "")
-        }
-        .sheet(isPresented: $showingDocumentPicker) {
-            DocumentPickerView { url in
-                // 延迟执行，让 sheet 先关闭再打开 fullScreenCover，避免冲突
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    parseImportFile(url: url)
-                }
-            }
-        }
-        .fullScreenCover(item: $parsedResult) { result in
-            ImportPreviewView(result: result)
+        .sheet(isPresented: $showingBatchImport) {
+            BatchImportEntryView()
                 .environmentObject(dataManager)
-        }
-        .sheet(isPresented: $showingTemplateShare) {
-            if let templateURL = TemplateManager.shared.getTemplateURL() {
-                ShareLink(item: templateURL, subject: Text("配件导入模板")) {
-                    VStack(spacing: 16) {
-                        Image(systemName: "doc.text.fill")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.blue)
-                        Text("配件导入模板")
-                            .font(.headline)
-                        Text("点击分享或保存模板文件")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemGroupedBackground))
-                }
-            }
         }
         .sheet(isPresented: $showingAddSheet) {
             AccessoryEditView(accessory: nil)
@@ -248,24 +208,6 @@ struct AccessoryListView: View {
         return colors[index]
     }
     
-    // MARK: - 批量导入
-    private func parseImportFile(url: URL) {
-        let parser = ExcelParser()
-        let result = parser.parseXLSX(at: url, existingCategories: dataManager.accessoryCategories)
-
-        if result.accessories.isEmpty && !result.errors.isEmpty {
-            importErrorMessage = result.errors.first?.message ?? "无法读取文件"
-            return
-        }
-
-        if result.accessories.isEmpty {
-            importErrorMessage = "文件中没有有效数据"
-            return
-        }
-
-        parsedResult = result
-    }
-
     private func startDrag(_ category: AccessoryCategory, _ index: Int, _ categories: [AccessoryCategory]) {
         // 震动反馈
         let generator = UIImpactFeedbackGenerator(style: .medium)

@@ -299,8 +299,28 @@ struct ContentView: View {
             ))
         }
         .sheet(isPresented: $showLogoEdit) {
-            if let image = selectedLogoImage {
+            // 使用 selectedLogoImage 或直接使用 appSettings.logoImage 作为备选
+            if let image = selectedLogoImage ?? appSettings.logoImage {
                 LogoEditView(settings: appSettings, image: image)
+            } else {
+                // 备用视图（不应该到达这里）
+                NavigationStack {
+                    VStack(spacing: 16) {
+                        Image(systemName: "photo")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+                        Text("没有可编辑的图片")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .navigationTitle("编辑图片")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("取消") { showLogoEdit = false }
+                        }
+                    }
+                }
             }
         }
     }
@@ -659,44 +679,47 @@ struct DragggingCardView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // 卡片
-            VStack(spacing: 12) {
-                if let customPath = category.customIconPath,
-                   let image = ImageStorage.shared.loadImage(filename: customPath) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: isIPad ? 48 : 40, height: isIPad ? 48 : 40)
-                        .foregroundStyle(.white)
-                } else {
-                    Image(systemName: category.icon)
-                        .font(.system(size: isIPad ? 48 : 40))
+            // 卡片（包含删除按钮，一起放大）
+            ZStack(alignment: .topLeading) {
+                // 卡片内容
+                VStack(spacing: 12) {
+                    if let customPath = category.customIconPath,
+                       let image = ImageStorage.shared.loadImage(filename: customPath) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: isIPad ? 48 : 40, height: isIPad ? 48 : 40)
+                            .foregroundStyle(.white)
+                    } else {
+                        Image(systemName: category.icon)
+                            .font(.system(size: isIPad ? 48 : 40))
+                            .foregroundStyle(.white)
+                    }
+
+                    Text(category.name)
+                        .font(isIPad ? .title3 : .headline)
+                        .fontWeight(.bold)
                         .foregroundStyle(.white)
                 }
+                .frame(width: initialFrame.width, height: initialFrame.height)
+                .background(
+                    LinearGradient(colors: [category.color, category.color.opacity(0.7)],
+                                  startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 6)
 
-                Text(category.name)
-                    .font(isIPad ? .title3 : .headline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
+                // 删除按钮（放在卡片内部，跟随放大）
+                Button(action: onDelete) {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.red)
+                        .background(Circle().fill(.white).frame(width: 26, height: 26))
+                }
+                .buttonStyle(.plain)
+                .offset(x: -8, y: -8)
             }
-            .frame(width: initialFrame.width, height: initialFrame.height)
-            .background(
-                LinearGradient(colors: [category.color, category.color.opacity(0.7)],
-                              startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 6)
             .scaleEffect(1.05)
-            
-            // 删除按钮
-            Button(action: onDelete) {
-                Image(systemName: "minus.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.red)
-                    .background(Circle().fill(.white).frame(width: 26, height: 26))
-            }
-            .buttonStyle(.plain)
-            .offset(x: -8, y: -8)
         }
         // 使用 position 定位到全局坐标位置
         .position(x: initialFrame.midX + offset.width, y: initialFrame.midY + offset.height)
