@@ -26,7 +26,6 @@ struct BundleComparisonView: View {
                 if categoryMap[categoryId] == nil {
                     categoryMap[categoryId] = (category, [])
                 }
-                // 添加配件（避免重复）
                 if !categoryMap[categoryId]!.accessories.contains(where: { $0.id == group.accessory.id }) {
                     categoryMap[categoryId]!.accessories.append(group.accessory)
                 }
@@ -39,9 +38,9 @@ struct BundleComparisonView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: 12) {
                     // 套餐头部信息
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(spacing: 12) {
                         ForEach(bundlesData, id: \.bundle.id) { data in
                             BundleHeaderCard(
                                 bundle: data.bundle,
@@ -52,32 +51,21 @@ struct BundleComparisonView: View {
                             )
                         }
                     }
-                    .padding(16)
-                    .background(Color(.systemBackground))
-
-                    Divider()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
 
                     // 配件对比列表（按分类）
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("配件对比")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(.systemGroupedBackground))
-
-                        LazyVStack(spacing: 0) {
-                            ForEach(categoriesWithAccessories, id: \.category.id) { item in
-                                CategoryComparisonSection(
-                                    category: item.category,
-                                    accessories: item.accessories,
-                                    bundlesData: bundlesData
-                                )
-                            }
+                    LazyVStack(spacing: 12) {
+                        ForEach(categoriesWithAccessories, id: \.category.id) { item in
+                            CategoryComparisonCard(
+                                category: item.category,
+                                accessories: item.accessories,
+                                bundlesData: bundlesData
+                            )
                         }
-                        .background(Color(.systemBackground))
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 20)
                 }
             }
             .background(Color(.systemGroupedBackground))
@@ -105,39 +93,39 @@ struct BundleHeaderCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 Image(systemName: "bag.fill")
-                    .font(.title2)
-                    .foregroundStyle(.red)
+                    .font(.title)
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(Color.red)
+                    .clipShape(Circle())
 
                 Text(bundle.name)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Text("¥\(bundle.price)")
-                    .font(.title3.weight(.bold))
+                    .font(.title2.weight(.bold))
                     .foregroundStyle(.red)
 
                 Text("\(groups.count)件配件")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .padding(.vertical, 16)
             .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
 }
 
-// MARK: - Category Comparison Section
-struct CategoryComparisonSection: View {
+// MARK: - Category Comparison Card
+struct CategoryComparisonCard: View {
     let category: AccessoryCategory
     let accessories: [Accessory]
     let bundlesData: [(bundle: Bundle, groups: [BundleAccessoryGroup])]
@@ -145,32 +133,34 @@ struct CategoryComparisonSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // 分类标题
-            HStack {
-                Text(category.name)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.primary)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color(.systemGroupedBackground))
-
-            Divider()
-                .padding(.leading, 16)
+            Text(category.name)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.secondarySystemBackground))
 
             // 该分类下的配件对比
-            ForEach(Array(accessories.enumerated()), id: \.element.id) { index, accessory in
-                AccessoryComparisonRow(
-                    accessory: accessory,
-                    bundlesData: bundlesData
-                )
+            VStack(spacing: 0) {
+                ForEach(Array(accessories.enumerated()), id: \.element.id) { index, accessory in
+                    AccessoryComparisonRow(
+                        accessory: accessory,
+                        bundlesData: bundlesData,
+                        bundleCount: bundlesData.count
+                    )
 
-                if index < accessories.count - 1 {
-                    Divider()
-                        .padding(.leading, 16)
+                    if index < accessories.count - 1 {
+                        Divider()
+                            .padding(.leading, 16)
+                    }
                 }
             }
+            .padding(.vertical, 8)
         }
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -178,6 +168,7 @@ struct CategoryComparisonSection: View {
 struct AccessoryComparisonRow: View {
     let accessory: Accessory
     let bundlesData: [(bundle: Bundle, groups: [BundleAccessoryGroup])]
+    let bundleCount: Int
 
     private func hasAccessory(in bundleData: (bundle: Bundle, groups: [BundleAccessoryGroup])) -> Bool {
         bundleData.groups.contains { $0.accessory.id == accessory.id }
@@ -195,38 +186,48 @@ struct AccessoryComparisonRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .center, spacing: 0) {
             // 配件名称
-            Text(accessory.name)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .frame(width: 100, alignment: .leading)
-                .padding(.leading, 16)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(accessory.name)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+            }
+            .frame(width: 90, alignment: .leading)
+            .padding(.leading, 16)
+
+            Spacer()
 
             // 各套餐的配件状态
-            ForEach(bundlesData, id: \.bundle.id) { bundleData in
-                VStack(spacing: 2) {
-                    if hasAccessory(in: bundleData) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.green)
-                        if let group = getGroup(in: bundleData) {
-                            Text(accessoryDetail(for: group))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+            HStack(spacing: 0) {
+                ForEach(bundlesData, id: \.bundle.id) { bundleData in
+                    VStack(spacing: 4) {
+                        if hasAccessory(in: bundleData) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(.green)
+
+                            if let group = getGroup(in: bundleData) {
+                                Text(accessoryDetail(for: group))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .multilineTextAlignment(.center)
+                            }
+                        } else {
+                            Image(systemName: "xmark.circle")
+                                .font(.title2)
+                                .foregroundStyle(.gray.opacity(0.35))
                         }
-                    } else {
-                        Image(systemName: "xmark.circle")
-                            .font(.title3)
-                            .foregroundStyle(.gray.opacity(0.4))
                     }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
             }
+            .frame(width: CGFloat(bundleCount) * 80)
         }
         .padding(.vertical, 10)
+        .padding(.trailing, 16)
         .background(Color(.systemBackground))
     }
 }
