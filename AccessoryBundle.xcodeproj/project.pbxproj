@@ -24,6 +24,7 @@
 		9DF009588B2052C0C06EB631 /* import_template.xlsx in Resources */ = {isa = PBXBuildFile; fileRef = BCAF40826BC376EB7D2F8F14 /* import_template.xlsx */; };
 		A3003F9F7447329793C739F4 /* Category.swift in Sources */ = {isa = PBXBuildFile; fileRef = B260823288E45C7FD6932510 /* Category.swift */; };
 		B10C388BA3B0B5094B0EF62F /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF92A8241D027211EAE0BFBB /* DataManager.swift */; };
+		C1D2E3F4A5B6C78901234567 /* BundleComparisonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E3F4A5B6C7890123456789 /* BundleComparisonView.swift */; };
 		DFECB3CC1C7D3744911482E5 /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 774428C5475341CA85E35728 /* OnboardingManager.swift */; };
 		E44BCDBAEA2539D143A7EA3C /* AccessoryBundleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AF530CB2D14DAAE1DA1189 /* AccessoryBundleApp.swift */; };
 		EF284E928BB3264F8A0451DF /* DocumentPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B49F82F54ECFA4477B1A72 /* DocumentPickerView.swift */; };
@@ -51,6 +52,7 @@
 		B546D188AEFB7320033546B6 /* AccessoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessoryListView.swift; sourceTree = "<group>"; };
 		BCAF40826BC376EB7D2F8F14 /* import_template.xlsx */ = {isa = PBXFileReference; lastKnownFileType = file; path = import_template.xlsx; sourceTree = "<group>"; };
 		C360C817BC12522225D06262 /* ExcelParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcelParser.swift; sourceTree = "<group>"; };
+		D2E3F4A5B6C7890123456789 /* BundleComparisonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleComparisonView.swift; sourceTree = "<group>"; };
 		D9B49F82F54ECFA4477B1A72 /* DocumentPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPickerView.swift; sourceTree = "<group>"; };
 		E2AF530CB2D14DAAE1DA1189 /* AccessoryBundleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessoryBundleApp.swift; sourceTree = "<group>"; };
 		EF92A8241D027211EAE0BFBB /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 			children = (
 				B546D188AEFB7320033546B6 /* AccessoryListView.swift */,
 				84BA740192B4FE52F62CEE1D /* BundleDetailView.swift */,
+				D2E3F4A5B6C7890123456789 /* BundleComparisonView.swift */,
 				4680F960FA57A2E5E045CF7C /* BundleEditView.swift */,
 				7004441B143671C5073DE5A3 /* BundlePosterView.swift */,
 				AD694494B1E5088B6CB58D4A /* CategoryView.swift */,
@@ -225,6 +228,7 @@
 				F64035B99492FED57727E42A /* AppSettings.swift in Sources */,
 				3B085B0BD48DA389660600E1 /* Bundle.swift in Sources */,
 				383A12EA368CA1DA734FC3DD /* BundleDetailView.swift in Sources */,
+				C1D2E3F4A5B6C78901234567 /* BundleComparisonView.swift in Sources */,
 				220AE675A5CB6429F988B01E /* BundleEditView.swift in Sources */,
 				8EB595896805989C90AB71A4 /* BundlePosterView.swift in Sources */,
 				A3003F9F7447329793C739F4 /* Category.swift in Sources */,

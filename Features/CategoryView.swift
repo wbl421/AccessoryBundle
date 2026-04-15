@@ -8,17 +8,36 @@ struct CategoryView: View {
     @State private var bundleToDelete: Bundle?
     @State private var isEditMode = false
 
+    // 对比模式
+    @State private var isComparisonMode = false
+    @State private var selectedBundleIds: Set<UUID> = []
+    @State private var showingComparison = false
+
     var body: some View {
         BundleListView(
             category: category,
             isEditMode: isEditMode,
+            isComparisonMode: isComparisonMode,
+            selectedBundleIds: selectedBundleIds,
             onDeleteBundle: { bundle in
                 bundleToDelete = bundle
                 showDeleteAlert = true
+            },
+            onToggleSelection: { bundleId in
+                if selectedBundleIds.contains(bundleId) {
+                    selectedBundleIds.remove(bundleId)
+                } else if selectedBundleIds.count < 3 {
+                    selectedBundleIds.insert(bundleId)
+                }
             }
         )
         .fullScreenCover(isPresented: $showingAddBundle) {
             BundleEditView(categoryId: category.id, bundle: nil)
+        }
+        .sheet(isPresented: $showingComparison) {
+            if selectedBundleIds.count >= 2 {
+                BundleComparisonView(bundleIds: Array(selectedBundleIds))
+            }
         }
         .alert("确认删除", isPresented: $showDeleteAlert) {
             Button("取消", role: .cancel) {
@@ -36,14 +55,47 @@ struct CategoryView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 16) {
-                    Button { isEditMode.toggle() } label: {
-                        Text(isEditMode ? "完成" : "编辑")
-                            .fontWeight(.medium)
-                    }
-                    Button { showingAddBundle = true } label: {
-                        Image(systemName: "plus")
+                    if isComparisonMode {
+                        Button {
+                            isComparisonMode = false
+                            selectedBundleIds.removeAll()
+                        } label: {
+                            Text("取消")
+                                .fontWeight(.medium)
+                        }
+                        if selectedBundleIds.count >= 2 {
+                            Button {
+                                showingComparison = true
+                            } label: {
+                                Text("对比")
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    } else {
+                        Button { isEditMode.toggle() } label: {
+                            Text(isEditMode ? "完成" : "编辑")
+                                .fontWeight(.medium)
+                        }
+                        Button { showingAddBundle = true } label: {
+                            Image(systemName: "plus")
+                        }
+                        Button {
+                            isComparisonMode = true
+                        } label: {
+                            Image(systemName: "rectangle.on.rectangle")
+                        }
                     }
                 }
+            }
+        }
+        .onChange(of: isComparisonMode) { newValue in
+            if !newValue {
+                selectedBundleIds.removeAll()
             }
         }
     }
@@ -53,15 +105,18 @@ struct CategoryView: View {
 struct BundleListView: View {
     let category: Category
     var isEditMode: Bool = false
+    var isComparisonMode: Bool = false
+    var selectedBundleIds: Set<UUID> = []
     let onDeleteBundle: (Bundle) -> Void
-    
+    let onToggleSelection: (UUID) -> Void
+
     @EnvironmentObject var dataManager: DataManager
     @State private var dragItem: Bundle?
     @State private var dragOffset: CGFloat = 0
     @State private var dragTargetIndex: Int?
     @State private var localBundles: [Bundle] = []
     @State private var longPressItem: Bundle?
-    
+
     // 震动反馈生成器（提前创建）
     private let lightFeedback = UIImpactFeedbackGenerator(style: .light)
     private let mediumFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -98,11 +153,14 @@ struct BundleListView: View {
                             longPressItem: longPressItem,
                             localBundles: localBundles,
                             isEditMode: isEditMode,
+                            isComparisonMode: isComparisonMode,
+                            isSelected: selectedBundleIds.contains(element.id),
                             onDragStart: { startDrag($0, $1, $2) },
                             onDragUpdate: { updateDrag($0, $1) },
                             onDragEnd: { endDrag($0, $1, $2) },
                             onLongPress: { longPressItem = $0 },
-                            onDelete: { onDeleteBundle($0) }
+                            onDelete: { onDeleteBundle($0) },
+                            onToggleSelection: { onToggleSelection($0) }
                         )
                     }
                 }
@@ -112,7 +170,7 @@ struct BundleListView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("\(category.name)套餐")
         .navigationBarTitleDisplayMode(.large)
-        .onAppear { 
+        .onAppear {
             localBundles = bundles
             // 预准备震动反馈器
             lightFeedback.prepare()
@@ -178,18 +236,21 @@ struct DraggableBundleRow: View {
     let longPressItem: Bundle?
     let localBundles: [Bundle]
     var isEditMode: Bool = false
+    var isComparisonMode: Bool = false
+    var isSelected: Bool = false
     let onDragStart: (Bundle, Int, [Bundle]) -> Void
     let onDragUpdate: (CGFloat, Int?) -> Void
     let onDragEnd: (Bundle, Int, Int) -> Void
     let onLongPress: (Bundle) -> Void
     let onDelete: (Bundle) -> Void
-    
+    let onToggleSelection: (UUID) -> Void
+
     @State private var pressStartTime: Date?
     @State private var hasTriggeredLongPress = false
-    
+
     private var isDraggingThis: Bool { dragItem?.id == bundle.id }
     private var isLongPressed: Bool { longPressItem?.id == bundle.id && dragItem == nil }
-    
+
     // 动态 zIndex：被拖拽或长按的元素显示在最上层
     private var dynamicZIndex: Double {
         if isDraggingThis || isLongPressed {
@@ -197,7 +258,7 @@ struct DraggableBundleRow: View {
         }
         return Double(index)
     }
-    
+
     private var rowOffset: CGFloat {
         guard let dragItem = dragItem,
               let dragIndex = localBundles.firstIndex(where: { $0.id == dragItem.id }),
@@ -262,6 +323,14 @@ struct DraggableBundleRow: View {
                         .contentShape(Rectangle())
                         .padding(.leading, 12)
                     }
+            } else if isComparisonMode {
+                // 对比模式：显示勾选框
+                Button {
+                    onToggleSelection(bundle.id)
+                } label: {
+                    BundleCard(bundle: bundle, isDragging: false, isEditMode: false, isComparisonMode: true, isSelected: isSelected, onDelete: {})
+                }
+                .buttonStyle(.plain)
             } else {
                 // 非编辑模式：NavigationLink 导航到详情
                 NavigationLink(value: bundle.id) {
@@ -271,7 +340,7 @@ struct DraggableBundleRow: View {
             }
         }
     }
-    
+
     private func calculateNewIndex(translation: CGFloat) -> Int {
         let rowHeight: CGFloat = 120
         let currentIndex = localBundles.firstIndex(where: { $0.id == bundle.id }) ?? 0
@@ -285,6 +354,8 @@ struct BundleCard: View {
     let bundle: Bundle
     var isDragging: Bool = false
     var isEditMode: Bool = false
+    var isComparisonMode: Bool = false
+    var isSelected: Bool = false
     let onDelete: () -> Void
     @EnvironmentObject var dataManager: DataManager
 
@@ -313,14 +384,22 @@ struct BundleCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // 编辑模式左侧显示删除图标（纯占位，实际点击在最外层overlay）
+            // 编辑模式左侧显示删除图标
             if isEditMode {
                 Image(systemName: "minus.circle.fill")
                     .font(.title2)
                     .foregroundStyle(.red)
                     .frame(width: 44, height: 44)
             }
-            
+
+            // 对比模式左侧显示勾选框
+            if isComparisonMode {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundStyle(isSelected ? .blue : .gray)
+                    .frame(width: 44, height: 44)
+            }
+
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
                     RoundedRectangle(cornerRadius: 10)
@@ -355,7 +434,7 @@ struct BundleCard: View {
                         }
                     }
                 }
-                if !isEditMode {
+                if !isEditMode && !isComparisonMode {
                     HStack {
                         Spacer()
                         Text("点击查看详情")
@@ -371,6 +450,10 @@ struct BundleCard: View {
             .background(Color(.systemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+            )
         }
     }
 }
