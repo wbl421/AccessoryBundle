@@ -14,112 +14,37 @@ struct BundleComparisonView: View {
         }.sorted { $0.bundle.price < $1.bundle.price }
     }
 
-    // 获取所有涉及的分类
-    private var allCategories: [AccessoryCategory] {
+    // 获取套餐涉及的分类（去重）
+    private func getCategories(for bundleData: (bundle: Bundle, groups: [BundleAccessoryGroup])) -> [AccessoryCategory] {
         var categorySet = Set<UUID>()
         var categories: [AccessoryCategory] = []
 
-        for (_, groups) in bundlesData {
-            for group in groups {
-                guard let categoryId = group.accessory.categoryId,
-                      !categorySet.contains(categoryId),
-                      let category = dataManager.accessoryCategories.first(where: { $0.id == categoryId }) else { continue }
-                categorySet.insert(categoryId)
-                categories.append(category)
-            }
+        for group in bundleData.groups {
+            guard let categoryId = group.accessory.categoryId,
+                  !categorySet.contains(categoryId),
+                  let category = dataManager.accessoryCategories.first(where: { $0.id == categoryId }) else { continue }
+            categorySet.insert(categoryId)
+            categories.append(category)
         }
 
         return categories.sorted { $0.name < $1.name }
     }
 
-    // 检查某个套餐是否包含某个分类
-    private func hasCategory(_ category: AccessoryCategory, in bundleData: (bundle: Bundle, groups: [BundleAccessoryGroup])) -> Bool {
-        bundleData.groups.contains { $0.accessory.categoryId == category.id }
-    }
-
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    // 套餐头部信息
-                    HStack(spacing: 12) {
-                        ForEach(bundlesData, id: \.bundle.id) { data in
-                            BundleHeaderCard(
-                                bundle: data.bundle,
-                                groups: data.groups,
-                                onTap: {
-                                    selectedBundleId = IdentifiableUUID(id: data.bundle.id)
-                                }
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-
-                    // 分类对比表格
-                    VStack(spacing: 0) {
-                        // 表头 - 套餐价格
-                        HStack(spacing: 0) {
-                            Text("品类")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 80, alignment: .leading)
-                                .padding(.leading, 16)
-
-                            ForEach(bundlesData, id: \.bundle.id) { data in
-                                Text("¥\(data.bundle.price)")
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(.red)
-                                    .frame(maxWidth: .infinity)
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(bundlesData, id: \.bundle.id) { data in
+                        BundleComparisonCard(
+                            bundle: data.bundle,
+                            categories: getCategories(for: data),
+                            onTap: {
+                                selectedBundleId = IdentifiableUUID(id: data.bundle.id)
                             }
-                        }
-                        .padding(.vertical, 12)
-                        .background(Color(.secondarySystemBackground))
-
-                        Divider()
-
-                        // 分类对比行
-                        ForEach(Array(allCategories.enumerated()), id: \.element.id) { index, category in
-                            VStack(spacing: 0) {
-                                HStack(spacing: 0) {
-                                    // 分类名称
-                                    Text(category.name)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.primary)
-                                        .frame(width: 80, alignment: .leading)
-                                        .padding(.leading, 16)
-
-                                    // 各套餐是否包含
-                                    ForEach(bundlesData, id: \.bundle.id) { bundleData in
-                                        if hasCategory(category, in: bundleData) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.title2)
-                                                .foregroundStyle(.green)
-                                                .frame(maxWidth: .infinity)
-                                        } else {
-                                            Image(systemName: "xmark.circle")
-                                                .font(.title2)
-                                                .foregroundStyle(.gray.opacity(0.3))
-                                                .frame(maxWidth: .infinity)
-                                        }
-                                    }
-                                }
-                                .padding(.vertical, 14)
-                                .background(Color(.systemBackground))
-
-                                if index < allCategories.count - 1 {
-                                    Divider()
-                                        .padding(.leading, 96)
-                                }
-                            }
-                        }
+                        )
                     }
-                    .background(Color(.systemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, 16)
-
-                    Spacer()
                 }
+                .padding(16)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("套餐对比")
@@ -138,37 +63,56 @@ struct BundleComparisonView: View {
     }
 }
 
-// MARK: - Bundle Header Card
-struct BundleHeaderCard: View {
+// MARK: - Bundle Comparison Card
+struct BundleComparisonCard: View {
     let bundle: Bundle
-    let groups: [BundleAccessoryGroup]
+    let categories: [AccessoryCategory]
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 8) {
-                Image(systemName: "bag.fill")
-                    .font(.title)
-                    .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(Color.red)
-                    .clipShape(Circle())
-
+            VStack(alignment: .leading, spacing: 0) {
+                // 套餐名称
                 Text(bundle.name)
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 16)
+                    .padding(.bottom, 4)
 
+                // 价格
                 Text("¥\(bundle.price)")
-                    .font(.title2.weight(.bold))
+                    .font(.title.weight(.bold))
                     .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.bottom, 12)
 
-                Text("\(groups.count)件配件")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Divider()
+                    .padding(.horizontal, 12)
+
+                // 品类列表
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(categories) { category in
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(.green)
+                                .frame(width: 18)
+
+                            Text(category.name)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
             .background(Color(.systemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
