@@ -14,15 +14,26 @@ struct BundleComparisonView: View {
         }
     }
 
-    // 合并所有配件名称，用于横向对比
-    private var allAccessoryNames: [String] {
-        var names = Set<String>()
+    // 获取所有分类及其配件（按分类分组）
+    private var categoriesWithAccessories: [(category: AccessoryCategory, accessories: [Accessory])] {
+        var categoryMap: [UUID: (category: AccessoryCategory, accessories: [Accessory])] = [:]
+
         for (_, groups) in bundlesData {
             for group in groups {
-                names.insert(group.accessory.name)
+                guard let categoryId = group.accessory.categoryId,
+                      let category = dataManager.accessoryCategories.first(where: { $0.id == categoryId }) else { continue }
+
+                if categoryMap[categoryId] == nil {
+                    categoryMap[categoryId] = (category, [])
+                }
+                // 添加配件（避免重复）
+                if !categoryMap[categoryId]!.accessories.contains(where: { $0.id == group.accessory.id }) {
+                    categoryMap[categoryId]!.accessories.append(group.accessory)
+                }
             }
         }
-        return names.sorted()
+
+        return Array(categoryMap.values).sorted { $0.category.name < $1.category.name }
     }
 
     var body: some View {
@@ -35,7 +46,6 @@ struct BundleComparisonView: View {
                             BundleHeaderCard(
                                 bundle: data.bundle,
                                 groups: data.groups,
-                                isSelected: false,
                                 onTap: {
                                     selectedBundleId = IdentifiableUUID(id: data.bundle.id)
                                 }
@@ -47,7 +57,7 @@ struct BundleComparisonView: View {
 
                     Divider()
 
-                    // 配件对比列表
+                    // 配件对比列表（按分类）
                     VStack(alignment: .leading, spacing: 0) {
                         Text("配件对比")
                             .font(.subheadline.weight(.semibold))
@@ -57,10 +67,11 @@ struct BundleComparisonView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(.systemGroupedBackground))
 
-                        VStack(spacing: 0) {
-                            ForEach(allAccessoryNames, id: \.self) { accessoryName in
-                                AccessoryComparisonRow(
-                                    accessoryName: accessoryName,
+                        LazyVStack(spacing: 0) {
+                            ForEach(categoriesWithAccessories, id: \.category.id) { item in
+                                CategoryComparisonSection(
+                                    category: item.category,
+                                    accessories: item.accessories,
                                     bundlesData: bundlesData
                                 )
                             }
@@ -90,20 +101,14 @@ struct BundleComparisonView: View {
 struct BundleHeaderCard: View {
     let bundle: Bundle
     let groups: [BundleAccessoryGroup]
-    let isSelected: Bool
     let onTap: () -> Void
-
-    private var totalPrice: Int {
-        groups.reduce(0) { $0 + $1.totalPrice }
-    }
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Image(systemName: "bag.fill")
-                    .font(.title)
+                    .font(.title2)
                     .foregroundStyle(.red)
-                    .frame(height: 32)
 
                 Text(bundle.name)
                     .font(.subheadline.weight(.semibold))
@@ -111,81 +116,117 @@ struct BundleHeaderCard: View {
                     .lineLimit(1)
 
                 Text("¥\(bundle.price)")
-                    .font(.title2.weight(.bold))
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(.red)
 
                 Text("\(groups.count)件配件")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
             .background(Color(.systemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
     }
 }
 
+// MARK: - Category Comparison Section
+struct CategoryComparisonSection: View {
+    let category: AccessoryCategory
+    let accessories: [Accessory]
+    let bundlesData: [(bundle: Bundle, groups: [BundleAccessoryGroup])]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 分类标题
+            HStack {
+                Text(category.name)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(.systemGroupedBackground))
+
+            Divider()
+                .padding(.leading, 16)
+
+            // 该分类下的配件对比
+            ForEach(Array(accessories.enumerated()), id: \.element.id) { index, accessory in
+                AccessoryComparisonRow(
+                    accessory: accessory,
+                    bundlesData: bundlesData
+                )
+
+                if index < accessories.count - 1 {
+                    Divider()
+                        .padding(.leading, 16)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Accessory Comparison Row
 struct AccessoryComparisonRow: View {
-    let accessoryName: String
+    let accessory: Accessory
     let bundlesData: [(bundle: Bundle, groups: [BundleAccessoryGroup])]
 
     private func hasAccessory(in bundleData: (bundle: Bundle, groups: [BundleAccessoryGroup])) -> Bool {
-        bundleData.groups.contains { $0.accessory.name == accessoryName }
+        bundleData.groups.contains { $0.accessory.id == accessory.id }
     }
 
-    private func accessoryDetails(in bundleData: (bundle: Bundle, groups: [BundleAccessoryGroup])) -> String? {
-        guard let group = bundleData.groups.first(where: { $0.accessory.name == accessoryName }) else {
-            return nil
-        }
+    private func getGroup(in bundleData: (bundle: Bundle, groups: [BundleAccessoryGroup])) -> BundleAccessoryGroup? {
+        bundleData.groups.first { $0.accessory.id == accessory.id }
+    }
+
+    private func accessoryDetail(for group: BundleAccessoryGroup) -> String {
         if group.items.count == 1 {
-            return group.items.first?.displayName
+            return group.items.first?.displayName ?? ""
         }
         return "\(group.items.count)款可选"
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 0) {
             // 配件名称
-            Text(accessoryName)
+            Text(accessory.name)
                 .font(.subheadline)
                 .foregroundStyle(.primary)
-                .frame(width: 80, alignment: .leading)
+                .lineLimit(2)
+                .frame(width: 100, alignment: .leading)
                 .padding(.leading, 16)
-
-            Divider()
 
             // 各套餐的配件状态
             ForEach(bundlesData, id: \.bundle.id) { bundleData in
-                if hasAccessory(in: bundleData) {
-                    VStack(spacing: 2) {
+                VStack(spacing: 2) {
+                    if hasAccessory(in: bundleData) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.title3)
                             .foregroundStyle(.green)
-                        if let detail = accessoryDetails(in: bundleData) {
-                            Text(detail)
+                        if let group = getGroup(in: bundleData) {
+                            Text(accessoryDetail(for: group))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
+                    } else {
+                        Image(systemName: "xmark.circle")
+                            .font(.title3)
+                            .foregroundStyle(.gray.opacity(0.4))
                     }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    Image(systemName: "xmark.circle")
-                        .font(.title3)
-                        .foregroundStyle(.gray.opacity(0.5))
-                        .frame(maxWidth: .infinity)
                 }
+                .frame(maxWidth: .infinity)
             }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .background(Color(.systemBackground))
     }
 }
