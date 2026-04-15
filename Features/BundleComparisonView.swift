@@ -7,11 +7,11 @@ struct BundleComparisonView: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var selectedBundleId: IdentifiableUUID?
 
-    // 获取所有套餐数据
+    // 获取所有套餐数据（按价格从低到高排序）
     private var bundlesData: [(bundle: Bundle, groups: [BundleAccessoryGroup])] {
         bundleIds.compactMap { bundleId in
             dataManager.bundleWithAccessoryGroups(for: bundleId)
-        }
+        }.sorted { $0.bundle.price < $1.bundle.price }
     }
 
     // 获取所有涉及的分类
