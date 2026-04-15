@@ -1,10 +1,5 @@
 import SwiftUI
 
-// UUID 的 Identifiable 包装器
-struct IdentifiableUUID: Identifiable {
-    let id: UUID
-}
-
 // MARK: - Bundle Comparison View
 struct BundleComparisonView: View {
     let bundleIds: [UUID]
